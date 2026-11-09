@@ -17,18 +17,12 @@ import { big, num, price } from '@/lib/format';
 import { Chg, Panel, Tabs } from '@/ui/kit';
 import { heat } from '@/ui/theme';
 
-// Keyless dark basemap (CARTO). If a Protomaps key is set in .env (VITE_PROTOMAPS_KEY), its style is used instead.
-const PM_KEY = import.meta.env.VITE_PROTOMAPS_KEY as string | undefined;
-const DARK = PM_KEY ? `https://api.protomaps.com/styles/v2/black.json?key=${PM_KEY}` : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 // Satellite: Esri World Imagery (free with attribution), toned down so markers and cards stay legible.
 const SAT: maplibregl.StyleSpecification = {
   version: 8,
   sources: { sat: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 17, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' } },
   layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0c0c0c' } }, { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': -0.45, 'raster-brightness-max': 0.62, 'raster-contrast': 0.12 } }],
 };
-type Base = 'sat' | 'dark';
-const baseKey = 'fintel.mapbase';
-const savedBase = (): Base => { try { return localStorage.getItem(baseKey) === 'dark' ? 'dark' : 'sat'; } catch { return 'sat'; } };
 // Camera per country: big countries are framed on their middle rather than the capital, small ones zoom closer.
 const VIEW: Record<string, [number, number, number]> = {
   USA: [-97, 38.5, 2.75], CAN: [-98, 58, 2.5], MEX: [-102, 23.5, 3.9], BRA: [-52, -12, 3.1], ARG: [-64, -37, 3.1],
@@ -104,6 +98,8 @@ function frame(m: maplibregl.Map, c: Country, shape: Feature | undefined, animat
   else m.jumpTo({ center: [v[0], v[1]], zoom: v[2], padding: pad });
 }
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
+/** The style document is parsed (layers can be added). Unlike isStyleLoaded(), this doesn't wait for tiles. */
+const styleReady = (m: maplibregl.Map) => !!(m as unknown as { style?: { _loaded?: boolean } }).style?._loaded;
 /** Add the outline layers (again after a basemap switch, which drops custom layers). */
 /** GDELT event points as GeoJSON, filtered to the categories switched on. */
 function eventsGeo(d: EventsData | undefined, cats: Set<EventCat>): FeatureCollection {
@@ -112,7 +108,7 @@ function eventsGeo(d: EventsData | undefined, cats: Set<EventCat>): FeatureColle
 }
 const CAT_COLOR: maplibregl.ExpressionSpecification = ['match', ['get', 'cat'], ...EVENT_CATS.flatMap((c) => [c.id, c.color]), '#999999'] as unknown as maplibregl.ExpressionSpecification;
 function addEventLayers(m: maplibregl.Map, data: FeatureCollection, visible: boolean) {
-  if (!m.isStyleLoaded() || m.getSource('events')) return;
+  if (!styleReady(m) || m.getSource('events')) return;
   m.addSource('events', { type: 'geojson', data });
   const before = m.getLayer('sel-fill') ? 'sel-fill' : undefined;
   const r: maplibregl.ExpressionSpecification = ['interpolate', ['linear'], ['sqrt', ['get', 'm']], 1.7, 2.2, 6, 4.5, 15, 9, 40, 16];
@@ -134,7 +130,7 @@ function chokeGeo(d: ShippingData | undefined): FeatureCollection {
 interface Overlays { events: FeatureCollection; showEv: boolean; hazards: FeatureCollection; showHz: boolean; lanes: FeatureCollection; choke: FeatureCollection; showShip: boolean }
 const vis = (on: boolean) => (on ? 'visible' : 'none') as 'visible' | 'none';
 function addOverlayLayers(m: maplibregl.Map, o: Overlays) {
-  if (!m.isStyleLoaded() || m.getSource('hazards')) return;
+  if (!styleReady(m) || m.getSource('hazards')) return;
   const before = m.getLayer('sel-fill') ? 'sel-fill' : undefined;
   m.addSource('lanes', { type: 'geojson', data: o.lanes, attribution: 'Shipping lanes: P. Benden, CC BY 4.0 · Chokepoints: IMF PortWatch' });
   m.addLayer({ id: 'lanes', type: 'line', source: 'lanes', layout: { visibility: vis(o.showShip), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9fc3ff', 'line-opacity': ['match', ['get', 'type'], 'Major', 0.55, 'Middle', 0.32, 0.18], 'line-width': ['match', ['get', 'type'], 'Major', 1.6, 'Middle', 1, 0.6] } }, before);
@@ -157,7 +153,7 @@ function popup(m: maplibregl.Map, at: maplibregl.LngLat, title: string, lines: s
 }
 
 function addBorderLayers(m: maplibregl.Map, all: Map<string, Feature> | null, selIso: string | undefined) {
-  if (!m.isStyleLoaded() || m.getSource('sel-border')) return;
+  if (!styleReady(m) || m.getSource('sel-border')) return;
   m.addSource('tracked', { type: 'geojson', data: all ? { type: 'FeatureCollection', features: [...all.values()] } : EMPTY });
   m.addLayer({ id: 'tracked-hit', type: 'fill', source: 'tracked', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0 } });
   const f = selIso ? all?.get(selIso) : undefined;
@@ -192,7 +188,6 @@ export function WorldMap() {
   const lanesRef = useRef<FeatureCollection>(EMPTY);
   const ovRef = useRef<Overlays>({ events: EMPTY, showEv: true, hazards: EMPTY, showHz: true, lanes: EMPTY, choke: EMPTY, showShip: true });
   const [mapErr, setMapErr] = useState('');
-  const [base, setBase] = useState<Base>(savedBase);
   const shapesRef = useRef<Map<string, Feature> | null>(null);
   const selRef = useRef<Country | null>(sel);
 
@@ -201,15 +196,17 @@ export function WorldMap() {
     let m: maplibregl.Map;
     try {
       const v0 = viewFor(sel ?? COUNTRIES[0]);
-      m = new maplibregl.Map({ container: box.current, style: base === 'sat' ? SAT : DARK, center: [v0[0], v0[1]], zoom: v0[2], minZoom: 0.8, maxZoom: 9, attributionControl: { compact: true }, renderWorldCopies: false, dragRotate: false });
+      m = new maplibregl.Map({ container: box.current, style: SAT, center: [v0[0], v0[1]], zoom: v0[2], minZoom: 0.8, maxZoom: 9, attributionControl: { compact: true }, renderWorldCopies: false, dragRotate: false });
     } catch (e) { setMapErr('Map needs WebGL, which this browser has turned off.'); return; }
     map.current = m;
+    if (import.meta.env.DEV) (window as unknown as { __pxMap?: maplibregl.Map }).__pxMap = m; // for local debugging
     m.once('load', () => frame(m, selRef.current ?? COUNTRIES[0], undefined, false));
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     // outlines: drawn once the style and shapes are ready, and again after a basemap switch
     m.on('load', () => { countryShapes().then((all) => { shapesRef.current = all; addBorderLayers(m, all, selRef.current?.iso3); if (selRef.current) frame(m, selRef.current, all.get(selRef.current.iso3), false); }).catch(() => { /* outlines are optional */ }); });
     m.on('styledata', () => { if (shapesRef.current) addBorderLayers(m, shapesRef.current, selRef.current?.iso3); addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
     m.on('load', () => { addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
+    m.on('idle', () => { addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
     m.on('click', 'hazards', (e) => {
       const p = e.features?.[0]?.properties as { kind: keyof typeof HAZARD_LABEL; title: string; detail: string; level: string; src: string; url: string; t: number } | undefined;
       if (!p) return;
@@ -272,8 +269,6 @@ export function WorldMap() {
     addEventListener('fintel:map-focus', f); return () => removeEventListener('fintel:map-focus', f);
   }, []);
 
-  const switchBase = (b: Base) => { setBase(b); try { localStorage.setItem(baseKey, b); } catch { /* private mode */ } map.current?.setStyle(b === 'sat' ? SAT : DARK); setMapErr(''); };
-
   // colour markers by the local index's daily change (or currency if there's no index)
   useEffect(() => {
     for (const c of COUNTRIES) {
@@ -329,8 +324,6 @@ export function WorldMap() {
         <div ref={box} className="mapcanvas" />
         {mapErr && <div className="maperr" role="status">{mapErr}</div>}
         <div className="maplayers">
-          <button className="btn" onClick={() => switchBase('sat')} aria-pressed={base === 'sat'}>Satellite</button>
-          <button className="btn" onClick={() => switchBase('dark')} aria-pressed={base === 'dark'}>Streets</button>
           <button className="btn" onClick={() => setShowShip((v) => !v)} aria-pressed={showShip} title="Shipping lanes and chokepoint traffic (IMF PortWatch)">Shipping</button>
           <button className="btn" onClick={() => { const on = !(showEv || showHz); setShowEv(on); setShowHz(on); }} aria-pressed={showEv || showHz} title="Market-moving events: war, unrest, sanctions (GDELT, 24h) and natural hazards (USGS, GDACS, NASA)">Events</button>
         </div>

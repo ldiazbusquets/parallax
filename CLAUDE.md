@@ -35,7 +35,7 @@ The app lives in `fintel-project/`. See its README for running it and the source
   provider + "updated" footer. Grid spans: c3/c4/c6/c8/c12 on a 12-column grid; each row should sum to 12.
 - CORS-blocked hosts go through the Vite relay `/px/<name>` (yahoo, fred, sec, fed, cnbc, mw, groq).
   Direct from the browser: fiscaldata.treasury.gov, publicreporting.cftc.gov, CoinGecko, alternative.me,
-  mempool.space, World Bank, Finnhub, CARTO basemap.
+  mempool.space, World Bank, Finnhub, Esri imagery tiles.
 
 ## Verified endpoints (Nov 2026)
 - Yahoo: `/v7/finance/spark?symbols=A,B&range=1d&interval=5m` (no key). Result order ≠ request order.
@@ -98,7 +98,8 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Outfit for UI text, Inter Tight (light, tabular) for numbers; `<Big>` dims the decimals of display numbers.
 - Pills for tabs/buttons; dashed grids; LineChart marks the window high (white) and low (warm dot).
 - One warm accent `#ef6f3c`, used sparingly (lows, focus, active command). Luis dislikes yellow/amber: don't drift toward it.
-- Map: Esri World Imagery (desaturated) by default with a Streets (CARTO) toggle; overlays are glass (`--glass`).
+- Map: Esri World Imagery (desaturated) only (Luis removed the Streets view); overlays are glass (`--glass`).
+  Add map layers once the style has parsed (`styleReady`), not `isStyleLoaded()`, which waits for every tile.
 
 ## Ideas not built yet (roadmap)
 - Shipping, next step: port-level calls (PortWatch `Daily_Ports_Data`) and live vessel positions via a free AIS feed

@@ -164,7 +164,7 @@ async function main() {
   if (want('events')) {
     await step('events', async () => {
       // Rolling 24-hour window of GDELT event files (one every 15 min), kept in .cache between runs.
-      const cacheFile = path.join(path.dirname(OUT), '..', '.cache', 'events-raw-v4.json');
+      const cacheFile = path.join(path.dirname(OUT), '..', '.cache', 'events-raw-v5.json');
       let cache: { done: string[]; evs: Ev[] } = { done: [], evs: [] };
       try { cache = JSON.parse(await readFile(cacheFile, 'utf8')); } catch { /* first run */ }
       const now = Date.now(), cutoff = now - 24 * 3600_000, q = 15 * 60_000;

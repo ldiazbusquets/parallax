@@ -126,14 +126,14 @@ describe('GDELT events', () => {
     expect(cameoLabel('195')).toBe('Air strikes'); expect(cameoLabel('1412')).toBe('Demonstration or rally');
   });
   it('keeps geolocated, recent, well-covered events only', () => {
-    const tsv = [row(base), row({ ...base, 31: '4' }), row({ ...base, 56: '', 57: '' }), row({ ...base, 1: '20250101' }), row({ ...base, 28: '04', 26: '040' })].join('\n');
+    const tsv = [row(base), row({ ...base, 31: '1' }), row({ ...base, 56: '', 57: '' }), row({ ...base, 1: '20250101' }), row({ ...base, 28: '04', 26: '040' })].join('\n');
     const evs = parseGdeltExport(tsv);
     expect(evs).toHaveLength(1);
     expect(evs[0]).toEqual([Date.UTC(2026, 10, 7), 'conflict', '195', 31.5, 34.47, 'Gaza, Gaza Strip', 'IS', 'ISRAEL', 'HAMAS', 12, 4, 'https://example.com/a']);
   });
   it('summarises points, de-duplicated top events and per-country counts', () => {
     const e = parseGdeltExport([row(base), row({ ...base, 26: '193', 31: '5' }), row({ ...base, 26: '143', 28: '14', 53: 'US', 60: 'https://example.com/b' }),
-      row({ ...base, 26: '190', 31: '6', 32: '1', 60: 'https://example.com/c' })].join('\n')); // last: one source, few mentions → not important
+      row({ ...base, 26: '190', 31: '2', 32: '1', 60: 'https://example.com/c' })].join('\n')); // last: one source, 2 mentions → not important
     const s = summariseEvents(e);
     expect(s.total).toBe(3);
     expect(s.byCat).toEqual({ conflict: 2, unrest: 1, sanctions: 0 });
@@ -145,9 +145,10 @@ describe('GDELT events', () => {
     const crime = row({ ...base, 7: 'USA', 12: 'COP', 16: 'GUNMAN', 17: 'USA', 18: '', 22: 'CRM', 26: '193', 53: 'US' });
     const war = row({ ...base, 7: 'RUS', 12: 'MIL', 17: 'UKR', 18: '', 22: '', 53: 'UP' });
     const gunman = row({ ...base, 7: '', 12: 'UAF', 17: 'USA', 22: '', 26: '193', 53: 'US' });
-    const tourist = row({ ...base, 7: 'GBR', 12: '', 17: 'POL', 22: '', 26: '193', 53: 'PL' });
+    const tourist = row({ ...base, 5: 'GBRCVL', 7: 'GBR', 12: 'CVL', 15: 'POLCOP', 17: 'POL', 22: 'COP', 26: '193', 53: 'PL' });
+    const states = row({ ...base, 5: 'RUS', 7: 'RUS', 12: '', 15: 'UKR', 17: 'UKR', 22: '', 26: '195', 53: 'UP' });
     const strike = row({ ...base, 7: 'FRA', 12: 'LAB', 16: '', 18: '', 26: '143', 28: '14', 53: 'FR' });
-    expect(parseGdeltExport([crime, war, gunman, tourist, strike].join('\n')).map((e) => e[1])).toEqual(['conflict', 'unrest']);
+    expect(parseGdeltExport([crime, war, gunman, tourist, states, strike].join('\n')).map((e) => [e[1], e[6]])).toEqual([['conflict', 'UP'], ['conflict', 'UP'], ['unrest', 'FR']]);
   });
   it('re-applies current categories to events cached under the old rules', () => {
     const old = [Date.UTC(2026, 10, 7), 'protest', '141', 1, 1, 'X', 'US', '', '', 30, 5, 'u'] as unknown as Parameters<typeof summariseEvents>[0][number];

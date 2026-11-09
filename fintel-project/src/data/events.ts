@@ -44,8 +44,8 @@ export function recategorise(e: Ev): Ev | null {
   const c = categorise(e[2].slice(0, 2), e[2]);
   return c ? [e[0], c, ...e.slice(2)] as Ev : null;
 }
-/** Widely reported: at least 2 independent sources or 10 mentions. */
-export const important = (e: Ev) => e[10] >= 2 || e[9] >= 10;
+/** Reported more than once: 2+ sources or 3+ mentions. (A file records an event when first seen, so counts are low.) */
+export const important = (e: Ev) => e[10] >= 2 || e[9] >= 3;
 
 /** One event, compact: [time(ms), cat, code, lat, lng, place, fips, actor1, actor2, mentions, sources, url] */
 export type Ev = [number, EventCat, string, number, number, string, string, string, string, number, number, string];
@@ -59,15 +59,17 @@ export function stateLevel(f: string[]): boolean {
   const types = [f[12], f[13], f[14], f[22], f[23], f[24]];
   if (types.includes('CRM')) return false;
   if (types.some((t) => t && ARMED.test(t))) return true;
-  // two countries, with a government, armed force or international body on at least one side (not "a Briton in Poland")
-  return !!(f[7] && f[17] && f[7] !== f[17] && types.some((t) => t && STATE.test(t)));
+  // two countries, with a government, armed force or international body on at least one side, or both sides coded
+  // as the countries themselves (e.g. RUS → UKR); a private citizen abroad doesn't count
+  if (!(f[7] && f[17] && f[7] !== f[17])) return false;
+  return types.some((t) => t && STATE.test(t)) || (f[5] === f[7] && f[15] === f[17]);
 }
 const stamp = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10) || 0, +s.slice(10, 12) || 0);
 
 /** Parse one GDELT 2.0 export file (tab-separated, 61 columns). Keeps geolocated conflict/protest/coercion events
  *  that happened within `maxAgeDays` of being added and were mentioned at least `minMentions` times.
  *  Categories are applied again when summarising, so the cached window follows rule changes. */
-export function parseGdeltExport(tsv: string, minMentions = 5, maxAgeDays = 7): Ev[] {
+export function parseGdeltExport(tsv: string, minMentions = 2, maxAgeDays = 7): Ev[] {
   const out: Ev[] = [];
   for (const line of tsv.split('\n')) {
     const f = line.split('\t');
