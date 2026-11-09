@@ -117,7 +117,7 @@ describe('shapeImf', () => {
 import { categorise, cameoLabel, parseGdeltExport, summariseEvents } from './events';
 describe('GDELT events', () => {
   const row = (o: Record<number, string>) => { const f = Array(61).fill(''); for (const [k, v] of Object.entries(o)) f[+k] = v; return f.join('\t'); };
-  const base = { 1: '20261106', 6: 'ISRAEL', 16: 'HAMAS', 26: '195', 28: '19', 31: '12', 32: '4', 52: 'Gaza, Gaza Strip', 53: 'IS', 56: '31.5', 57: '34.47', 59: '20261107000000', 60: 'https://example.com/a' };
+  const base = { 1: '20261106', 6: 'ISRAEL', 7: 'ISR', 12: 'MIL', 16: 'HAMAS', 18: 'HMS', 26: '195', 28: '19', 31: '12', 32: '4', 52: 'Gaza, Gaza Strip', 53: 'IS', 56: '31.5', 57: '34.47', 59: '20261107000000', 60: 'https://example.com/a' };
   it('categorises CAMEO root codes', () => {
     expect(categorise('19', '195')).toBe('conflict'); expect(categorise('18', '183')).toBe('conflict'); expect(categorise('15', '152')).toBe('conflict');
     expect(categorise('14', '143')).toBe('unrest'); expect(categorise('16', '1631')).toBe('sanctions');
@@ -140,6 +140,12 @@ describe('GDELT events', () => {
     expect(s.top.map((x) => x.label)).toEqual(['Air strikes', 'Strike or boycott']); // same article coded twice → once
     expect(s.byCountry.IS.n).toBe(2);
     expect(s.points.find((p) => p.cat === 'conflict')?.n).toBe(2);
+  });
+  it('drops violence that is crime rather than war (no armed actor, armed group or second country)', () => {
+    const crime = row({ ...base, 7: 'USA', 12: 'COP', 16: 'GUNMAN', 17: 'USA', 18: '', 22: 'CRM', 26: '193', 53: 'US' });
+    const war = row({ ...base, 7: 'RUS', 12: 'MIL', 17: 'UKR', 18: '', 22: '', 53: 'UP' });
+    const strike = row({ ...base, 7: 'FRA', 12: 'LAB', 16: '', 18: '', 26: '143', 28: '14', 53: 'FR' });
+    expect(parseGdeltExport([crime, war, strike].join('\n')).map((e) => e[1])).toEqual(['conflict', 'unrest']);
   });
   it('re-applies current categories to events cached under the old rules', () => {
     const old = [Date.UTC(2026, 10, 7), 'protest', '141', 1, 1, 'X', 'US', '', '', 30, 5, 'u'] as unknown as Parameters<typeof summariseEvents>[0][number];

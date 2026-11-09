@@ -164,7 +164,7 @@ async function main() {
   if (want('events')) {
     await step('events', async () => {
       // Rolling 24-hour window of GDELT event files (one every 15 min), kept in .cache between runs.
-      const cacheFile = path.join(path.dirname(OUT), '..', '.cache', 'events-raw.json');
+      const cacheFile = path.join(path.dirname(OUT), '..', '.cache', 'events-raw-v2.json');
       let cache: { done: string[]; evs: Ev[] } = { done: [], evs: [] };
       try { cache = JSON.parse(await readFile(cacheFile, 'utf8')); } catch { /* first run */ }
       const now = Date.now(), cutoff = now - 24 * 3600_000, q = 15 * 60_000;
@@ -174,7 +174,7 @@ async function main() {
         if (!cache.done.includes(id)) todo.push(id);
       }
       let added = 0, files = 0;
-      for (const id of todo.slice(0, 40)) { // at most 40 files (10 h) per run; the window fills over a few runs
+      for (const id of todo.slice(0, 96)) { // up to a full day per run (each file is small)
         try {
           const res = await fetch(`http://data.gdeltproject.org/gdeltv2/${id}.export.CSV.zip`);
           if (res.status === 404) continue;
