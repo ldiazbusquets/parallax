@@ -5,11 +5,14 @@ import type { SourceDef } from './store';
 // The snapshot job keeps a rolling 24-hour window and publishes a summary (events.json); browsers can't fetch the
 // raw zip files (no CORS), so every mode reads that summary.
 
-export type EventCat = 'conflict' | 'protest' | 'coercion';
+// Only event types that can move markets are kept: armed conflict and military escalation, strikes/blockades/riots,
+// and sanctions or embargoes. Street crime, arrests, ordinary protests and verbal threats are dropped, and an event
+// must be reported by several articles (see `important`) so one-off miscodings don't reach the map.
+export type EventCat = 'conflict' | 'unrest' | 'sanctions';
 export const EVENT_CATS: { id: EventCat; label: string; color: string; hint: string }[] = [
-  { id: 'conflict', label: 'Conflict', color: '#ff5147', hint: 'Assaults, fighting, mass violence (CAMEO 18–20)' },
-  { id: 'protest', label: 'Protest', color: '#5aa9ff', hint: 'Demonstrations, strikes, riots (CAMEO 14)' },
-  { id: 'coercion', label: 'Coercion & sanctions', color: '#b48cff', hint: 'Threats, force posture, coercion, sanctions (CAMEO 13, 15, 17, 163)' },
+  { id: 'conflict', label: 'War & conflict', color: '#ff5147', hint: 'Military force, air strikes, shelling, occupation, bombings, assassinations, mass violence, threats or shows of military force' },
+  { id: 'unrest', label: 'Strikes & unrest', color: '#5aa9ff', hint: 'Strikes, boycotts, blockades and riots' },
+  { id: 'sanctions', label: 'Sanctions', color: '#b48cff', hint: 'Sanctions, embargoes and trade boycotts' },
 ];
 
 /** Plain-English labels for the CAMEO event codes we keep (most specific first). */
@@ -29,11 +32,20 @@ const CAMEO: Record<string, string> = {
 export const cameoLabel = (code: string) => CAMEO[code] ?? CAMEO[code.slice(0, 3)] ?? CAMEO[code.slice(0, 2)] ?? 'Event';
 
 export function categorise(root: string, code: string): EventCat | null {
-  if (root === '18' || root === '19' || root === '20') return 'conflict';
-  if (root === '14') return 'protest';
-  if (root === '13' || root === '15' || root === '17' || code.startsWith('163')) return 'coercion';
+  if (root === '19' || root === '20') return 'conflict';                       // fighting, mass violence
+  if (/^(181|183|186)/.test(code)) return 'conflict';                            // hostage-taking, bombings, assassinations (not assaults/crime)
+  if (root === '15' || /^(138|139)/.test(code)) return 'conflict';              // military posture/mobilisation, threats of force, ultimatums
+  if (/^(143|144|145)/.test(code)) return 'unrest';                              // strikes and boycotts, blockades, riots
+  if (code.startsWith('163')) return 'sanctions';                                // embargoes, boycotts, sanctions
   return null;
 }
+/** Re-apply today's categories to an event parsed under older rules (the job's cached window). */
+export function recategorise(e: Ev): Ev | null {
+  const c = categorise(e[2].slice(0, 2), e[2]);
+  return c ? [e[0], c, ...e.slice(2)] as Ev : null;
+}
+/** Widely reported: at least 2 independent sources or 10 mentions. */
+export const important = (e: Ev) => e[10] >= 2 || e[9] >= 10;
 
 /** One event, compact: [time(ms), cat, code, lat, lng, place, fips, actor1, actor2, mentions, sources, url] */
 export type Ev = [number, EventCat, string, number, number, string, string, string, string, number, number, string];
@@ -41,8 +53,9 @@ export type Ev = [number, EventCat, string, number, number, string, string, stri
 const stamp = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10) || 0, +s.slice(10, 12) || 0);
 
 /** Parse one GDELT 2.0 export file (tab-separated, 61 columns). Keeps geolocated conflict/protest/coercion events
- *  that happened within `maxAgeDays` of being added and were mentioned at least `minMentions` times. */
-export function parseGdeltExport(tsv: string, minMentions = 3, maxAgeDays = 7): Ev[] {
+ *  that happened within `maxAgeDays` of being added and were mentioned at least `minMentions` times.
+ *  Categories are applied again when summarising, so the cached window follows rule changes. */
+export function parseGdeltExport(tsv: string, minMentions = 5, maxAgeDays = 7): Ev[] {
   const out: Ev[] = [];
   for (const line of tsv.split('\n')) {
     const f = line.split('\t');
@@ -63,7 +76,7 @@ export interface EventItem { t: number; cat: EventCat; label: string; place: str
 export interface EventsData { from: number; to: number; total: number; byCat: Record<EventCat, number>; points: EventPoint[]; top: EventItem[]; byCountry: Record<string, { n: number; byCat: Record<EventCat, number>; top: EventItem[] }> }
 
 const item = (e: Ev): EventItem => ({ t: e[0], cat: e[1], label: cameoLabel(e[2]), place: e[5], fips: e[6], a1: e[7], a2: e[8], m: e[9], url: e[11], lat: e[3], lng: e[4] });
-const zero = (): Record<EventCat, number> => ({ conflict: 0, protest: 0, coercion: 0 });
+const zero = (): Record<EventCat, number> => ({ conflict: 0, unrest: 0, sanctions: 0 });
 /** One event per source article (the same story is often coded several times). */
 function dedupe(evs: Ev[]) {
   const best = new Map<string, Ev>();
@@ -72,7 +85,8 @@ function dedupe(evs: Ev[]) {
 }
 
 /** Summarise a window of events: map points (merged by place and category), the most-covered events, and per country. */
-export function summariseEvents(evs: Ev[], topN = 80, perCountry = 12): EventsData {
+export function summariseEvents(all: Ev[], topN = 80, perCountry = 12): EventsData {
+  const evs = all.flatMap((e) => { const r = recategorise(e); return r && important(r) ? [r] : []; });
   const byCat = zero();
   const pts = new Map<string, EventPoint>();
   for (const e of evs) {

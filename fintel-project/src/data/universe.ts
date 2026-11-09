@@ -121,11 +121,3 @@ export const COUNTRIES: Country[] = [
   { iso3: 'NZL', name: 'New Zealand', lat: -41.29, lng: 174.78, index: ['^NZ50', 'NZX 50'], fx: ['NZDUSD=X', 'NZD/USD'], bond: 'NZ' },
 ];
 
-/** Maritime chokepoints (approximate centre points). */
-export const CHOKEPOINTS: { name: string; lat: number; lng: number }[] = [
-  { name: 'Strait of Hormuz', lat: 26.57, lng: 56.25 }, { name: 'Strait of Malacca', lat: 2.5, lng: 101.4 },
-  { name: 'Suez Canal', lat: 30.6, lng: 32.33 }, { name: 'Bab el-Mandeb', lat: 12.6, lng: 43.35 },
-  { name: 'Panama Canal', lat: 9.1, lng: -79.7 }, { name: 'Bosporus', lat: 41.12, lng: 29.06 },
-  { name: 'Strait of Gibraltar', lat: 35.97, lng: -5.6 }, { name: 'Danish Straits', lat: 55.7, lng: 12.7 },
-  { name: 'Taiwan Strait', lat: 24.5, lng: 119.6 }, { name: 'Cape of Good Hope', lat: -34.36, lng: 18.47 },
-];

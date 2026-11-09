@@ -9,7 +9,9 @@ import { isStaleQuote, useQuotes } from '@/data/yahoo';
 import { useSource } from '@/data/store';
 import { EVENT_CATS, EVENTS, FIPS, cameoLabel, type EventCat, type EventsData } from '@/data/events';
 import { IMF, IMF_INDICATORS, POLICY, WB_INDICATORS, worldBankSource, type ImfData } from '@/data/sources';
-import { bondId, policyArea, CHOKEPOINTS, COUNTRIES, type Country } from '@/data/universe';
+import { bondId, policyArea, COUNTRIES, type Country } from '@/data/universe';
+import { HAZARDS, HAZARD_COLOR, HAZARD_LABEL, type Hazard } from '@/data/hazards';
+import { LANES_URL, SHIPPING, weekAvg, yearBefore, type ShippingData } from '@/data/shipping';
 import { FRED_MACRO } from '@/data/fred';
 import { big, num, price } from '@/lib/format';
 import { Chg, Panel, Tabs } from '@/ui/kit';
@@ -117,6 +119,43 @@ function addEventLayers(m: maplibregl.Map, data: FeatureCollection, visible: boo
   m.addLayer({ id: 'events-glow', type: 'circle', source: 'events', layout: { visibility: visible ? 'visible' : 'none' }, paint: { 'circle-color': CAT_COLOR, 'circle-radius': ['*', r, 2.2], 'circle-opacity': 0.12, 'circle-blur': 1 } }, before);
   m.addLayer({ id: 'events', type: 'circle', source: 'events', layout: { visibility: visible ? 'visible' : 'none' }, paint: { 'circle-color': CAT_COLOR, 'circle-radius': r, 'circle-opacity': 0.85, 'circle-stroke-color': '#0c0c0c', 'circle-stroke-width': 0.6 } }, before);
 }
+/** Natural hazards (USGS, GDACS, NASA EONET) as teal rings: bigger and brighter for Red/Orange alerts. */
+function hazardsGeo(items: Hazard[] | undefined): FeatureCollection {
+  return { type: 'FeatureCollection', features: (items ?? []).map((h) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [h.lng, h.lat] }, properties: { id: h.id, kind: h.kind, title: h.title, detail: h.detail, level: h.level ?? 'none', src: h.src, url: h.url, t: h.t } })) };
+}
+/** PortWatch chokepoints: circles sized by last week's average daily transits. */
+function chokeGeo(d: ShippingData | undefined): FeatureCollection {
+  if (!d) return EMPTY;
+  return { type: 'FeatureCollection', features: d.points.map((p) => {
+    const s = d.daily[p.id], now = weekAvg(s, d.last), prev = weekAvg(s, yearBefore(d.last));
+    return { type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { name: p.name, now: now ?? 0, yoy: now != null && prev ? (now / prev - 1) * 100 : null, last: d.last, ind: p.topIndustries.slice(0, 2).join(', ') } };
+  }) };
+}
+interface Overlays { events: FeatureCollection; showEv: boolean; hazards: FeatureCollection; showHz: boolean; lanes: FeatureCollection; choke: FeatureCollection; showShip: boolean }
+const vis = (on: boolean) => (on ? 'visible' : 'none') as 'visible' | 'none';
+function addOverlayLayers(m: maplibregl.Map, o: Overlays) {
+  if (!m.isStyleLoaded() || m.getSource('hazards')) return;
+  const before = m.getLayer('sel-fill') ? 'sel-fill' : undefined;
+  m.addSource('lanes', { type: 'geojson', data: o.lanes });
+  m.addLayer({ id: 'lanes', type: 'line', source: 'lanes', layout: { visibility: vis(o.showShip), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9fc3ff', 'line-opacity': ['match', ['get', 'type'], 'Major', 0.55, 'Middle', 0.32, 0.18], 'line-width': ['match', ['get', 'type'], 'Major', 1.6, 'Middle', 1, 0.6] } }, before);
+  m.addSource('choke', { type: 'geojson', data: o.choke });
+  const cr: maplibregl.ExpressionSpecification = ['interpolate', ['linear'], ['get', 'now'], 0, 4, 50, 7, 150, 11, 300, 15];
+  m.addLayer({ id: 'choke-glow', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#9fc3ff', 'circle-radius': ['*', cr, 1.9], 'circle-opacity': 0.12, 'circle-blur': 1 } }, before);
+  m.addLayer({ id: 'choke', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#0c0c0c', 'circle-opacity': 0.55, 'circle-radius': cr, 'circle-stroke-color': '#cfe0ff', 'circle-stroke-width': 1.6 } });
+  m.addSource('hazards', { type: 'geojson', data: o.hazards });
+  const hr: maplibregl.ExpressionSpecification = ['match', ['get', 'level'], 'red', 11, 'orange', 8, 6];
+  m.addLayer({ id: 'hazards-glow', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-radius': ['*', hr, 2.4], 'circle-opacity': ['match', ['get', 'level'], 'red', 0.22, 0.12], 'circle-blur': 1 } });
+  m.addLayer({ id: 'hazards', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-opacity': 0.25, 'circle-radius': hr, 'circle-stroke-color': HAZARD_COLOR, 'circle-stroke-width': ['match', ['get', 'level'], 'red', 2.4, 1.6] } });
+}
+function popup(m: maplibregl.Map, at: maplibregl.LngLat, title: string, lines: string[], link?: { url: string; text: string }) {
+  const box = document.createElement('div');
+  box.className = 'ev-pop';
+  const h = document.createElement('b'); h.textContent = title; box.append(h);
+  for (const l of lines.filter(Boolean)) { const d = document.createElement('div'); d.textContent = l; box.append(d); }
+  if (link?.url) { const a = document.createElement('a'); a.href = link.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = link.text; box.append(a); }
+  new maplibregl.Popup({ offset: 10, closeButton: false, maxWidth: '300px' }).setLngLat(at).setDOMContent(box).addTo(m);
+}
+
 function addBorderLayers(m: maplibregl.Map, all: Map<string, Feature> | null, selIso: string | undefined) {
   if (!m.isStyleLoaded() || m.getSource('sel-border')) return;
   m.addSource('tracked', { type: 'geojson', data: all ? { type: 'FeatureCollection', features: [...all.values()] } : EMPTY });
@@ -146,10 +185,14 @@ export function WorldMap() {
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<Map<string, HTMLDivElement>>(new Map());
   const [sel, setSel] = useState<Country | null>(COUNTRIES[0]);
-  const [showCp, setShowCp] = useState(true);
+  const hz = useSource(HAZARDS);
+  const ship = useSource(SHIPPING);
+  const [showShip, setShowShip] = useState(true);
+  const [showHz, setShowHz] = useState(true);
+  const lanesRef = useRef<FeatureCollection>(EMPTY);
+  const ovRef = useRef<Overlays>({ events: EMPTY, showEv: true, hazards: EMPTY, showHz: true, lanes: EMPTY, choke: EMPTY, showShip: true });
   const [mapErr, setMapErr] = useState('');
   const [base, setBase] = useState<Base>(savedBase);
-  const cpMarkers = useRef<maplibregl.Marker[]>([]);
   const shapesRef = useRef<Map<string, Feature> | null>(null);
   const selRef = useRef<Country | null>(sel);
 
@@ -165,8 +208,20 @@ export function WorldMap() {
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     // outlines: drawn once the style and shapes are ready, and again after a basemap switch
     m.on('load', () => { countryShapes().then((all) => { shapesRef.current = all; addBorderLayers(m, all, selRef.current?.iso3); if (selRef.current) frame(m, selRef.current, all.get(selRef.current.iso3), false); }).catch(() => { /* outlines are optional */ }); });
-    m.on('styledata', () => { if (shapesRef.current) addBorderLayers(m, shapesRef.current, selRef.current?.iso3); addEventLayers(m, evRef.current.data, evRef.current.show); });
-    m.on('load', () => addEventLayers(m, evRef.current.data, evRef.current.show));
+    m.on('styledata', () => { if (shapesRef.current) addBorderLayers(m, shapesRef.current, selRef.current?.iso3); addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
+    m.on('load', () => { addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
+    m.on('click', 'hazards', (e) => {
+      const p = e.features?.[0]?.properties as { kind: keyof typeof HAZARD_LABEL; title: string; detail: string; level: string; src: string; url: string; t: number } | undefined;
+      if (!p) return;
+      popup(m, e.lngLat, p.title, [`${HAZARD_LABEL[p.kind]}${p.level !== 'none' ? ` · ${p.level} alert` : ''} · ${new Date(Number(p.t)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`, p.detail], { url: p.url, text: p.src + ' ↗' });
+    });
+    m.on('click', 'choke', (e) => {
+      const p = e.features?.[0]?.properties as { name: string; now: number; yoy: number | null | string; last: string; ind: string } | undefined;
+      if (!p) return;
+      const yoy = p.yoy == null || p.yoy === 'null' ? null : Number(p.yoy);
+      popup(m, e.lngLat, p.name, [`${Number(p.now).toFixed(0)} ships a day (7 days to ${new Date(p.last + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})${yoy != null ? ` · ${yoy >= 0 ? '+' : ''}${yoy.toFixed(0)}% vs a year ago` : ''}`, p.ind ? 'Main cargo: ' + p.ind : ''], { url: 'https://portwatch.imf.org/', text: 'IMF PortWatch ↗' });
+    });
+    for (const id of ['hazards', 'choke']) { m.on('mouseenter', id, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', id, () => { m.getCanvas().style.cursor = ''; }); }
     m.on('click', 'events', (e) => {
       const p = e.features?.[0]?.properties as { cat: EventCat; n: number; m: number; place: string; code: string; url: string } | undefined;
       if (!p) return;
@@ -180,7 +235,7 @@ export function WorldMap() {
     });
     m.on('mouseenter', 'events', () => { m.getCanvas().style.cursor = 'pointer'; });
     m.on('mouseleave', 'events', () => { m.getCanvas().style.cursor = ''; });
-    m.on('click', 'tracked-hit', (e) => { if (m.getLayer('events') && m.queryRenderedFeatures(e.point, { layers: ['events'] }).length) return; const iso = e.features?.[0]?.properties?.iso3 as string | undefined; const c = COUNTRIES.find((x) => x.iso3 === iso); if (c) setSel(c); });
+    m.on('click', 'tracked-hit', (e) => { const top = ['events', 'hazards', 'choke'].filter((l) => m.getLayer(l)); if (top.length && m.queryRenderedFeatures(e.point, { layers: top }).length) return; const iso = e.features?.[0]?.properties?.iso3 as string | undefined; const c = COUNTRIES.find((x) => x.iso3 === iso); if (c) setSel(c); });
     m.on('mouseenter', 'tracked-hit', () => { m.getCanvas().style.cursor = 'pointer'; });
     m.on('mouseleave', 'tracked-hit', () => { m.getCanvas().style.cursor = ''; });
     m.on('error', (e) => { if (String(e.error?.message || '').match(/style|Failed to fetch/i)) setMapErr('Map tiles could not load.'); });
@@ -194,14 +249,9 @@ export function WorldMap() {
       markers.current.set(c.iso3, el);
       new maplibregl.Marker({ element: el }).setLngLat([c.lng, c.lat]).addTo(m);
     }
-    for (const p of CHOKEPOINTS) {
-      const el = document.createElement('div');
-      el.className = 'mk-cp';
-      cpMarkers.current.push(new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).setPopup(new maplibregl.Popup({ offset: 8, closeButton: false }).setText(p.name)).addTo(m));
-    }
     const ro = new ResizeObserver(() => m.resize());
     ro.observe(box.current);
-    return () => { ro.disconnect(); m.remove(); markers.current.clear(); cpMarkers.current = []; };
+    return () => { ro.disconnect(); m.remove(); markers.current.clear(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // events layer: data, category filter and visibility
@@ -248,7 +298,23 @@ export function WorldMap() {
     if (first.current) { first.current = false; return; } // initial view is set on load
     frame(m, sel, shapesRef.current?.get(sel.iso3), true);
   }, [sel]);
-  useEffect(() => { cpMarkers.current.forEach((mk) => { mk.getElement().style.display = showCp ? '' : 'none'; }); }, [showCp]);
+  // shipping lanes are a static file: load it the first time the layer is on
+  useEffect(() => {
+    if (!showShip || lanesRef.current !== EMPTY) return;
+    fetch(LANES_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))).then((fc: FeatureCollection) => {
+      lanesRef.current = fc; ovRef.current = { ...ovRef.current, lanes: fc };
+      (map.current?.getSource('lanes') as maplibregl.GeoJSONSource | undefined)?.setData(fc);
+    }).catch(() => { /* lanes are decoration around real chokepoint data; skip if missing */ });
+  }, [showShip]);
+  // hazards and chokepoints: data and visibility
+  useEffect(() => {
+    ovRef.current = { ...ovRef.current, hazards: hazardsGeo(hz.data?.items), showHz, choke: chokeGeo(ship.data), showShip, lanes: lanesRef.current };
+    const m = map.current; if (!m) return;
+    (m.getSource('hazards') as maplibregl.GeoJSONSource | undefined)?.setData(ovRef.current.hazards);
+    (m.getSource('choke') as maplibregl.GeoJSONSource | undefined)?.setData(ovRef.current.choke);
+    for (const id of ['hazards', 'hazards-glow']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showHz));
+    for (const id of ['lanes', 'choke', 'choke-glow']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showShip));
+  }, [hz.data, ship.data, showHz, showShip]);
 
   const iq = sel?.index ? q.data?.[sel.index[0]] : undefined;
   const fq = sel?.fx ? q.data?.[sel.fx[0]] : undefined;
@@ -258,24 +324,27 @@ export function WorldMap() {
   const pr = sel ? pol.data?.[policyArea(sel) ?? ''] : undefined;
   const bondPrev = bs && bs.length > 12 ? bs[bs.length - 13] : undefined;
   return (
-    <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev]} span="c8 mappanel" hasData>
+    <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev, hz, ship]} span="c8 mappanel" hasData>
       <div className="mapwrap">
         <div ref={box} className="mapcanvas" />
         {mapErr && <div className="maperr" role="status">{mapErr}</div>}
         <div className="maplayers">
           <button className="btn" onClick={() => switchBase('sat')} aria-pressed={base === 'sat'}>Satellite</button>
           <button className="btn" onClick={() => switchBase('dark')} aria-pressed={base === 'dark'}>Streets</button>
-          <button className="btn" onClick={() => setShowCp((v) => !v)} aria-pressed={showCp}>Chokepoints</button>
-          <button className="btn" onClick={() => setShowEv((v) => !v)} aria-pressed={showEv} title="World events from GDELT, last 24 hours">Events</button>
+          <button className="btn" onClick={() => setShowShip((v) => !v)} aria-pressed={showShip} title="Shipping lanes and chokepoint traffic (IMF PortWatch)">Shipping</button>
+          <button className="btn" onClick={() => { const on = !(showEv || showHz); setShowEv(on); setShowHz(on); }} aria-pressed={showEv || showHz} title="Market-moving events: war, unrest, sanctions (GDELT, 24h) and natural hazards (USGS, GDACS, NASA)">Events</button>
         </div>
-        {showEv && <div className="evlegend" role="group" aria-label="Event types">
+        {(showEv || showHz) && <div className="evlegend" role="group" aria-label="Event types">
           {EVENT_CATS.map((c) => (
-            <button key={c.id} className={evCats.has(c.id) ? 'on' : ''} title={c.hint} aria-pressed={evCats.has(c.id)}
-              onClick={() => setEvCats((s) => { const n = new Set(s); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })}>
+            <button key={c.id} className={showEv && evCats.has(c.id) ? 'on' : ''} title={c.hint} aria-pressed={evCats.has(c.id)}
+              onClick={() => { setShowEv(true); setEvCats((s) => { const n = new Set(s); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; }); }}>
               <i style={{ background: c.color }} />{c.label}{ev.data ? <span>{ev.data.byCat[c.id].toLocaleString('en-US')}</span> : null}
             </button>
           ))}
-          <small>GDELT · 24h</small>
+          <button className={showHz ? 'on' : ''} aria-pressed={showHz} title="Significant earthquakes and tsunami flags (USGS), Orange/Red cyclone, flood, volcano and drought alerts (GDACS), large wildfires (NASA EONET), last 14 days" onClick={() => setShowHz((v) => !v)}>
+            <i style={{ background: HAZARD_COLOR }} />Natural hazards{hz.data ? <span>{hz.data.items.length}</span> : null}
+          </button>
+          <small>GDELT 24h · hazards 14d</small>
         </div>}
         <div className="maplegend"><span>Index today</span><span style={{ width: 90, height: 6, borderRadius: 3, background: 'linear-gradient(90deg,#cd3a34,#2a2a2a,#349652)', display: 'inline-block' }} /><span>−2% … +2%</span></div>
         {sel && (
@@ -342,7 +411,7 @@ function CountryEvents({ d, fips }: { d?: EventsData; fips?: string }) {
       </div>
       {c?.top.length ? <ul className="cev-l">{c.top.slice(0, 3).map((e, i) => (
         <li key={i}><i style={{ background: EVENT_CATS.find((k) => k.id === e.cat)?.color }} /><span><b>{e.label}</b>{e.a1 || e.a2 ? ` · ${[e.a1, e.a2].filter(Boolean).map(tidyActor).join(' → ')}` : ''}<small>{e.place} · {e.m} mentions · <a href={e.url} target="_blank" rel="noopener noreferrer">{host(e.url)}</a></small></span></li>
-      ))}</ul> : <p className="faint" style={{ fontSize: 11.5 }}>No conflict, protest or coercion events coded in the last 24 hours.</p>}
+      ))}</ul> : <p className="faint" style={{ fontSize: 11.5 }}>No widely reported conflict, unrest or sanctions events in the last 24 hours.</p>}
     </div>
   );
 }

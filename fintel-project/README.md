@@ -80,6 +80,10 @@ SEC asks automated tools to identify themselves.
 | Candlestick charts (watchlist, company pages) | Yahoo Finance OHLC (site: tracked symbols, 5D–1Y daily) | with charts |
 | Stock screener (every US-listed stock) | Nasdaq screener + FINRA daily short volume | 15 min / daily |
 | Analyst ratings (company pages, screener) | Finnhub recommendation trends | daily (site) / your key |
+| Market-moving events (war & conflict, strikes & unrest, sanctions; widely reported only) | GDELT 2.0 event files | 15 min (site) |
+| Natural hazards (significant quakes, tsunami flags, Orange/Red cyclone, flood, volcano, drought alerts, large wildfires) | USGS, GDACS, NASA EONET | 30 min, live |
+| Shipping chokepoints (daily transits, YoY) | IMF PortWatch | 6 h, live |
+| Shipping lanes (map) | Benden, Global Shipping Lanes (CC BY 4.0), from the CIA World Oceans map | static |
 | Short interest | FINRA consolidated short interest (twice monthly) + Reg SHO daily short volume | 12 h / daily |
 
 Locally, sources without browser (CORS) access go through the Vite dev/preview server relay (`/px/*` in
@@ -118,3 +122,7 @@ scripts/snapshot.ts          website data job
 ```
 
 For research, not trading advice. Yahoo Finance data is delayed and for personal use.
+
+## Install as an app
+
+Parallax ships a web app manifest (`public/manifest.webmanifest`, icons in `public/`). In Chrome or Edge use **Install app** in the top bar or the address-bar install icon; on iPhone/iPad, Share → Add to Home Screen; in Safari on a Mac, File → Add to Dock.

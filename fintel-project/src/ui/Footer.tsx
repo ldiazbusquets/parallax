@@ -56,6 +56,7 @@ export function Footer({ onTab }: { onTab: (id: string) => void }) {
             {TEAM.map(([name, url]) => <p key={name}><a href={url} target="_blank" rel="noopener noreferrer">{name}</a></p>)}
           </div>
         </div>
+        <p className="install-hint">Use it as an app: in Chrome or Edge, click <b>Install app</b> at the top (or the install icon in the address bar). On iPhone or iPad, Share → Add to Home Screen; on a Mac in Safari, File → Add to Dock.</p>
         <div className="fbar"><span>No cookies, no tracking</span><span>© {new Date().getFullYear()} Luis Diaz Busquets, Martin Fantauzzi Figueroa &amp; Martha Ortiz Serrano</span><span>Delayed public data. Not investment advice.</span></div>
       </div>
       <Wordmark />

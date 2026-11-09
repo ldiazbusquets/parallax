@@ -80,6 +80,16 @@ The app lives in `fintel-project/`. See its README for running it and the source
   volume `cdn.finra.org/equity/regsho/daily/CNMSshvolYYYYMMDD.txt` allows browsers. `src/data/equity.ts`.
 - Candles: `parseChart` keeps OHLCV when every bar is complete; the site publishes 1y daily bars per tracked symbol in
   `snap/ohlc/<SYM>.json` (rebuilt daily). Line/Candles choice is saved per browser (`fintel.chartstyle`).
+- Events (`src/data/events.ts`): only market-moving CAMEO codes: conflict = roots 19/20, 181/183/186, root 15, 138/139;
+  unrest = 143/144/145; sanctions = 163*. Kept only if `important` (≥2 sources or ≥10 mentions). Ordinary protests,
+  assaults and arrests are dropped. `summariseEvents` re-categorises the cached window, so rule changes apply at once.
+- Hazards (`src/data/hazards.ts`, CORS, live): USGS `summary/4.5_week` + `significant_month` (keep significant, M6+, tsunami=1);
+  GDACS `gdacsapi/api/events/geteventlist/SEARCH?eventlist=TC;FL;VO;DR;WF&alertlevel=Orange;Red` (EQ comes from USGS);
+  NASA EONET wildfires (IRWIN acres, ≥1,000, prescribed burns excluded).
+- Shipping (`src/data/shipping.ts`, CORS, live): IMF PortWatch ArcGIS `PortWatch_chokepoints_database` (28 chokepoints,
+  lat/lon) and `Daily_Chokepoints_Data` (n_total, n_tanker…; 1,000 rows per page, page with resultOffset). Lanes:
+  `public/data/shipping-lanes.json`, simplified from newzealandpaul/Shipping-Lanes (CC BY 4.0, keep the credit).
+- Installable: `public/manifest.webmanifest` + icons; `src/ui/install.ts` shows "Install app" on beforeinstallprompt.
 - Layout (`src/ui/layout.tsx`): panel registry lives in App.tsx (`PANELS`); `WORKSPACES` (tabs: Overview, Markets,
   Macro & Rates, Geo, Companies) each have a default layout, rows summing to 12; edits are saved per tab (`#/w/<id>`).
 
@@ -91,8 +101,8 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Map: Esri World Imagery (desaturated) by default with a Streets (CARTO) toggle; overlays are glass (`--glass`).
 
 ## Ideas not built yet (roadmap)
-- Shipping: IMF PortWatch (free daily port calls and chokepoint transit counts, ArcGIS REST) on the map and as a panel;
-  live vessel positions later via a free AIS feed (aisstream.io websocket, free key; would need a small relay).
+- Shipping, next step: port-level calls (PortWatch `Daily_Ports_Data`) and live vessel positions via a free AIS feed
+  (aisstream.io websocket, free key; would need a small relay).
 - Cargo flights: OpenSky Network / adsb.lol ADS-B positions filtered to cargo operators (FedEx FDX, UPS, Atlas GTI,
   Cargolux CLX, Kalitta, Cathay/Emirates/Qatar cargo callsigns) as a map layer with hub traffic counts.
 - Admin/health page across Luis's sites (uptime, deploy status, key expiry such as the Canvas token): pinned for later.

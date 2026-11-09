@@ -12,10 +12,10 @@ const it = (s: string): Item[] => s.trim().split(/\s+/).map((x) => { const [key,
 export interface Workspace { id: string; name: string; items: Item[] }
 export const WORKSPACES: Workspace[] = [
   // rows are paired by natural panel height so cards line up (measured on the live site, Nov 2026)
-  { id: 'overview', name: 'Overview', items: it('map:8 indices:4 heatmap:8 vol:4 news:6 brief:6 sectors:4 ecocal:4 cmdty:4') },
+  { id: 'overview', name: 'Overview', items: it('map:8 indices:4 heatmap:8 vol:4 news:6 brief:6 sectors:4 ecocal:4 shipping:4') },
   { id: 'markets', name: 'Markets', items: it('indices:4 cmdty:4 crypto:4 heatmap:8 vol:4 sectors:4 fx:4 hist:4 watch:8 alerts:4 screener:12 cot:12') },
   { id: 'macro', name: 'Macro & Rates', items: it('curve:4 govies:4 cb:4 eco:8 ecocal:4 credit:4 rates:4 auctions:4 weo:12 cot:12') },
-  { id: 'geo', name: 'Geo', items: it('map:12 events:8 news:4 weo:12 rates:4 fx:4 cmdty:4') },
+  { id: 'geo', name: 'Geo', items: it('map:12 events:8 shipping:4 weo:12 rates:4 fx:4 cmdty:4') },
   { id: 'companies', name: 'Companies', items: it('link:12 filings:4 cal:4 news:4 watch:8 shorts:4 screener:12') },
 ];
 const KEY = 'fintel.workspaces'; // { active, custom: { [workspaceId]: Item[] } }

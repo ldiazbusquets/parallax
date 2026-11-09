@@ -92,3 +92,23 @@ describe('OHLC bars', () => {
     expect(windowBars(b, 2)).toMatchObject({ c: [11.5, 12], o: [11, 11.5], prevClose: 11 });
   });
 });
+
+import { parseEonetFires, parseGdacs, parseUsgs } from './hazards';
+describe('natural hazards', () => {
+  it('keeps significant, M6+ or tsunami-flagged quakes once', () => {
+    const f = (id: string, mag: number, tsunami = 0, alert: string | null = null) => ({ id, properties: { mag, place: 'Somewhere', time: 1, url: 'u', alert, tsunami, sig: 0, title: '' }, geometry: { coordinates: [140, 38, 10] } });
+    const h = parseUsgs([{ features: [f('a', 5.1), f('b', 6.4), f('c', 5.0, 1)] }, { features: [f('b', 6.4), f('d', 4.9)] }], new Set(['d']));
+    expect(h.map((x) => [x.id, x.kind]).sort()).toEqual([['usgs:b', 'quake'], ['usgs:c', 'tsunami'], ['usgs:d', 'quake']]);
+  });
+  it('keeps Orange/Red GDACS alerts with a point location', () => {
+    const g = (eventtype: string, alertlevel: string) => ({ geometry: { type: 'Point', coordinates: [80, 15] }, properties: { eventtype, eventid: 1, name: 'Tropical Cyclone X-26', alertlevel, iso3: 'IND', country: 'India', fromdate: '2026-11-01T00:00:00', severitydata: { severitytext: 'Hurricane/Typhoon > 74 mph' } } });
+    const h = parseGdacs({ features: [g('TC', 'Red'), g('FL', 'Green'), g('EQ', 'Red')] });
+    expect(h).toHaveLength(1);
+    expect(h[0]).toMatchObject({ kind: 'cyclone', level: 'red', iso3: 'IND', t: Date.UTC(2026, 10, 1) });
+  });
+  it('keeps large wildfires and skips prescribed burns', () => {
+    const e = (title: string, acres: number) => ({ id: title, title, description: null, link: 'l', geometry: [{ date: '2026-11-02T00:00:00Z', type: 'Point', coordinates: [-120, 37], magnitudeValue: acres, magnitudeUnit: 'acres' }] });
+    const h = parseEonetFires({ events: [e('Wildfire Big Creek, Fresno, California', 25000), e('Prescribed Fire Piles RX, Coconino, Arizona', 3000), e('Wildfire Small, X', 200)] });
+    expect(h.map((x) => [x.title, x.level])).toEqual([['Big Creek, Fresno, California fire', 'orange']]);
+  });
+});

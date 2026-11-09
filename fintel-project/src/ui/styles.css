@@ -602,3 +602,11 @@ table.t .only-s { display: none; color: var(--faint); font: 300 11px var(--sans)
 .wm { display: flex; justify-content: center; padding: 30px 0 0; user-select: none; overflow: hidden; }
 .wm span { font: 500 clamp(56px, 15vw, 250px)/.8 var(--sans); letter-spacing: -.06em; color: transparent; background: linear-gradient(180deg, #4a4a4a 0%, #1c1c1c 75%, rgba(12,12,12,0) 100%); -webkit-background-clip: text; background-clip: text; display: inline-block; will-change: filter; }
 @media (max-width: 760px) { .fgrid { grid-template-columns: 1fr 1fr; } .fgrid > div:first-child { grid-column: 1 / -1; } .site-foot { padding-top: 56px; margin-top: 40px; } .fbar { margin-top: 36px; } }
+
+/* ---------- install, hazards, shipping ---------- */
+.install-btn { white-space: nowrap; }
+.install-hint { margin: 40px 0 0; font: 300 12.5px var(--sans); color: var(--faint); max-width: 760px; }
+.install-hint b { font-weight: 500; color: var(--dim); }
+.evdot.hz { background: transparent !important; border: 1.5px solid #3fd0c9; box-sizing: border-box; }
+.evdot.hz.red { box-shadow: 0 0 0 3px rgba(63,208,201,.18); }
+@media (max-width: 760px) { .install-btn { display: none; } }

@@ -13,9 +13,10 @@ import { Alerts, Toasts } from '@/panels/alerts';
 import { LinkView } from '@/panels/network';
 import { CompanyPage, openCompany, useCompanyRoute } from '@/panels/company';
 import { WorldMap } from '@/map/WorldMap';
-import { WorldEvents } from '@/panels/geo';
+import { WorldEvents, Shipping } from '@/panels/geo';
 import { CommandBar } from '@/ui/Command';
 import { Footer } from '@/ui/Footer';
+import { useInstall } from '@/ui/install';
 import { Slot, useWorkspaces, WORKSPACES, type Span } from '@/ui/layout';
 
 // Exchange hours (local time) for the clocks. Weekends closed; holidays not modelled.
@@ -94,6 +95,7 @@ function Health({ onClick }: { onClick: () => void }) {
 }
 
 export default function App() {
+  const [canInstall, install] = useInstall();
   const [settings, setSettings] = useState(false);
   const [editing, setEditing] = useState(false);
   const [spin, setSpin] = useState(false);
@@ -131,6 +133,7 @@ export default function App() {
     ecocal: { id: 'p-ecocal', label: 'Economic calendar', span: 'c4', el: <EconomicCalendar /> },
     govies: { id: 'p-govies', label: 'Government bonds', span: 'c4', el: <GovYields /> },
     screener: { id: 'p-screener', label: 'Stock screener', span: 'c12', el: <Screener /> },
+    shipping: { id: 'p-shipping', label: 'Shipping chokepoints', span: 'c4', el: <Shipping /> },
     shorts: { id: 'p-shorts', label: 'Short interest', span: 'c4', el: <ShortInterest /> },
   };
   const L = useWorkspaces(Object.keys(PANELS));
@@ -160,6 +163,7 @@ export default function App() {
           <div className="sp" />
           <CommandBar onTicker={chartIt} onCompany={openCompany} />
           {L.customised && editing && <button className="btn" onClick={L.reset} title="Restore this tab's default layout">Reset tab</button>}
+          {canInstall && <button className="btn install-btn" onClick={install} title="Install Parallax as an app on this device">Install app</button>}
           <button className={'btn edit-btn' + (editing ? ' pri' : '')} onClick={() => setEditing((v) => !v)}>{editing ? 'Done' : 'Edit layout'}</button>
           <Health onClick={() => setSettings(true)} />
         </div>

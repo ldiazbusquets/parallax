@@ -119,23 +119,31 @@ describe('GDELT events', () => {
   const row = (o: Record<number, string>) => { const f = Array(61).fill(''); for (const [k, v] of Object.entries(o)) f[+k] = v; return f.join('\t'); };
   const base = { 1: '20261106', 6: 'ISRAEL', 16: 'HAMAS', 26: '195', 28: '19', 31: '12', 32: '4', 52: 'Gaza, Gaza Strip', 53: 'IS', 56: '31.5', 57: '34.47', 59: '20261107000000', 60: 'https://example.com/a' };
   it('categorises CAMEO root codes', () => {
-    expect(categorise('19', '195')).toBe('conflict'); expect(categorise('14', '141')).toBe('protest');
-    expect(categorise('16', '1631')).toBe('coercion'); expect(categorise('04', '040')).toBeNull();
+    expect(categorise('19', '195')).toBe('conflict'); expect(categorise('18', '183')).toBe('conflict'); expect(categorise('15', '152')).toBe('conflict');
+    expect(categorise('14', '143')).toBe('unrest'); expect(categorise('16', '1631')).toBe('sanctions');
+    // dropped: ordinary demonstrations, street assaults, arrests, unrelated codes
+    expect(categorise('14', '141')).toBeNull(); expect(categorise('18', '182')).toBeNull(); expect(categorise('17', '173')).toBeNull(); expect(categorise('04', '040')).toBeNull();
     expect(cameoLabel('195')).toBe('Air strikes'); expect(cameoLabel('1412')).toBe('Demonstration or rally');
   });
   it('keeps geolocated, recent, well-covered events only', () => {
-    const tsv = [row(base), row({ ...base, 31: '1' }), row({ ...base, 56: '', 57: '' }), row({ ...base, 1: '20250101' }), row({ ...base, 28: '04', 26: '040' })].join('\n');
+    const tsv = [row(base), row({ ...base, 31: '4' }), row({ ...base, 56: '', 57: '' }), row({ ...base, 1: '20250101' }), row({ ...base, 28: '04', 26: '040' })].join('\n');
     const evs = parseGdeltExport(tsv);
     expect(evs).toHaveLength(1);
     expect(evs[0]).toEqual([Date.UTC(2026, 10, 7), 'conflict', '195', 31.5, 34.47, 'Gaza, Gaza Strip', 'IS', 'ISRAEL', 'HAMAS', 12, 4, 'https://example.com/a']);
   });
   it('summarises points, de-duplicated top events and per-country counts', () => {
-    const e = parseGdeltExport([row(base), row({ ...base, 26: '193', 31: '5' }), row({ ...base, 26: '141', 28: '14', 53: 'US', 60: 'https://example.com/b' })].join('\n'));
+    const e = parseGdeltExport([row(base), row({ ...base, 26: '193', 31: '5' }), row({ ...base, 26: '143', 28: '14', 53: 'US', 60: 'https://example.com/b' }),
+      row({ ...base, 26: '190', 31: '6', 32: '1', 60: 'https://example.com/c' })].join('\n')); // last: one source, few mentions → not important
     const s = summariseEvents(e);
     expect(s.total).toBe(3);
-    expect(s.byCat).toEqual({ conflict: 2, protest: 1, coercion: 0 });
-    expect(s.top.map((x) => x.label)).toEqual(['Air strikes', 'Demonstration or rally']); // same article coded twice → once
+    expect(s.byCat).toEqual({ conflict: 2, unrest: 1, sanctions: 0 });
+    expect(s.top.map((x) => x.label)).toEqual(['Air strikes', 'Strike or boycott']); // same article coded twice → once
     expect(s.byCountry.IS.n).toBe(2);
     expect(s.points.find((p) => p.cat === 'conflict')?.n).toBe(2);
+  });
+  it('re-applies current categories to events cached under the old rules', () => {
+    const old = [Date.UTC(2026, 10, 7), 'protest', '141', 1, 1, 'X', 'US', '', '', 30, 5, 'u'] as unknown as Parameters<typeof summariseEvents>[0][number];
+    const strike = [Date.UTC(2026, 10, 7), 'protest', '143', 1, 1, 'X', 'US', '', '', 30, 5, 'v'] as unknown as Parameters<typeof summariseEvents>[0][number];
+    expect(summariseEvents([old, strike]).byCat).toEqual({ conflict: 0, unrest: 1, sanctions: 0 });
   });
 });
