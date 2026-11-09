@@ -53,11 +53,11 @@ export type Ev = [number, EventCat, string, number, number, string, string, stri
 /** GDELT actor types that make violence a matter of war rather than crime: military, rebels, insurgents,
  *  separatists, irregular armed forces. (Police, criminals, businesses and civilians don't qualify.) */
 const ARMED = /^(MIL|REB|INS|SEP|UAF)$/;
-/** Is this a state-level event? Armed actors or a known armed group on either side, or two different countries. */
+/** Is this a state-level event? Armed forces/groups on either side, or two different countries; never a criminal actor. */
 export function stateLevel(f: string[]): boolean {
   const types = [f[12], f[13], f[14], f[22], f[23], f[24]];
+  if (types.includes('CRM')) return false;
   if (types.some((t) => t && ARMED.test(t))) return true;
-  if (f[8] || f[18]) return true; // a known organisation (e.g. an armed group)
   return !!(f[7] && f[17] && f[7] !== f[17]); // cross-border
 }
 const stamp = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10) || 0, +s.slice(10, 12) || 0);
@@ -73,7 +73,7 @@ export function parseGdeltExport(tsv: string, minMentions = 5, maxAgeDays = 7): 
     const cat = categorise(f[28], f[26]);
     if (!cat) continue;
     // fighting, threats and sanctions must involve armed forces, an armed group or two countries; strikes and riots needn't
-    if (cat !== 'unrest' && !stateLevel(f)) continue;
+    if (cat !== 'unrest' ? !stateLevel(f) : [f[12], f[22]].includes('CRM')) continue;
     const lat = parseFloat(f[56]), lng = parseFloat(f[57]), mentions = +f[31] || 0;
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0) || mentions < minMentions) continue;
     const added = stamp(f[59]), happened = stamp(f[1]);

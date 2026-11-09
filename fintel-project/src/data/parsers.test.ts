@@ -117,7 +117,7 @@ describe('shapeImf', () => {
 import { categorise, cameoLabel, parseGdeltExport, summariseEvents } from './events';
 describe('GDELT events', () => {
   const row = (o: Record<number, string>) => { const f = Array(61).fill(''); for (const [k, v] of Object.entries(o)) f[+k] = v; return f.join('\t'); };
-  const base = { 1: '20261106', 6: 'ISRAEL', 7: 'ISR', 12: 'MIL', 16: 'HAMAS', 18: 'HMS', 26: '195', 28: '19', 31: '12', 32: '4', 52: 'Gaza, Gaza Strip', 53: 'IS', 56: '31.5', 57: '34.47', 59: '20261107000000', 60: 'https://example.com/a' };
+  const base = { 1: '20261106', 6: 'ISRAEL', 7: 'ISR', 12: 'MIL', 16: 'HAMAS', 17: 'PSE', 26: '195', 28: '19', 31: '12', 32: '4', 52: 'Gaza, Gaza Strip', 53: 'IS', 56: '31.5', 57: '34.47', 59: '20261107000000', 60: 'https://example.com/a' };
   it('categorises CAMEO root codes', () => {
     expect(categorise('19', '195')).toBe('conflict'); expect(categorise('18', '183')).toBe('conflict'); expect(categorise('15', '152')).toBe('conflict');
     expect(categorise('14', '143')).toBe('unrest'); expect(categorise('16', '1631')).toBe('sanctions');

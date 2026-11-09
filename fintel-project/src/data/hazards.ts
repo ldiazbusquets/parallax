@@ -90,7 +90,8 @@ export async function fetchHazards(now = new Date()): Promise<HazardsData> {
   if (eo.status === 'fulfilled') items.push(...parseEonetFires(eo.value)); else errors.push('NASA EONET: ' + (eo.reason as Error)?.message);
   if (errors.length === 3) throw new Error(errors.join('; '));
   const rank = (h: Hazard) => (h.level === 'red' ? 3 : h.level === 'orange' ? 2 : 1);
-  return { items: items.sort((a, b) => rank(b) - rank(a) || b.t - a.t), errors };
+  const slow = (h: Hazard) => (h.kind === 'drought' ? 1 : 0); // months-long droughts after sudden events
+  return { items: items.sort((a, b) => slow(a) - slow(b) || rank(b) - rank(a) || b.t - a.t), errors };
 }
 export const HAZARDS: SourceDef<HazardsData> = {
   id: 'hazards', label: 'Natural hazards', provider: 'USGS · GDACS · NASA EONET', every: 30 * 60_000,

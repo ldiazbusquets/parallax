@@ -38,7 +38,7 @@ export function WorldEvents() {
       <ul className="feed evfeed">
         {hzRows.map((h) => (
           <li key={h.id} className="click" onClick={() => focus(h.lat, h.lng, h.iso3)}>
-            <span className="meta">{ago(h.t, now)}</span>
+            <span className="meta">{now - h.t > 14 * 864e5 ? 'since ' + new Date(h.t).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : ago(h.t, now)}</span>
             <i className={'evdot hz' + (h.level ? ' ' + h.level : '')} style={{ background: HAZARD_COLOR }} />
             <span className="ttl">{h.title}<span className="dim"> · {HAZARD_LABEL[h.kind]}{h.level ? ` · ${h.level} alert` : ''}</span>
               <small>{h.detail} · <a href={h.url} target="_blank" rel="noopener noreferrer" onClick={(x) => x.stopPropagation()}>{h.src} ↗</a></small></span>
