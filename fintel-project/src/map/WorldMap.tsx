@@ -136,7 +136,7 @@ const vis = (on: boolean) => (on ? 'visible' : 'none') as 'visible' | 'none';
 function addOverlayLayers(m: maplibregl.Map, o: Overlays) {
   if (!m.isStyleLoaded() || m.getSource('hazards')) return;
   const before = m.getLayer('sel-fill') ? 'sel-fill' : undefined;
-  m.addSource('lanes', { type: 'geojson', data: o.lanes });
+  m.addSource('lanes', { type: 'geojson', data: o.lanes, attribution: 'Shipping lanes: P. Benden, CC BY 4.0 · Chokepoints: IMF PortWatch' });
   m.addLayer({ id: 'lanes', type: 'line', source: 'lanes', layout: { visibility: vis(o.showShip), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9fc3ff', 'line-opacity': ['match', ['get', 'type'], 'Major', 0.55, 'Middle', 0.32, 0.18], 'line-width': ['match', ['get', 'type'], 'Major', 1.6, 'Middle', 1, 0.6] } }, before);
   m.addSource('choke', { type: 'geojson', data: o.choke });
   const cr: maplibregl.ExpressionSpecification = ['interpolate', ['linear'], ['get', 'now'], 0, 4, 50, 7, 150, 11, 300, 15];
