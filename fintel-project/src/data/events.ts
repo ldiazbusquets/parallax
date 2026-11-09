@@ -52,13 +52,15 @@ export type Ev = [number, EventCat, string, number, number, string, string, stri
 
 /** GDELT actor types that make violence a matter of war rather than crime: military, rebels, insurgents,
  *  separatists, irregular armed forces. (Police, criminals, businesses and civilians don't qualify.) */
-const ARMED = /^(MIL|REB|INS|SEP|UAF)$/;
+const ARMED = /^(MIL|REB|INS|SEP)$/;
+const STATE = /^(MIL|GOV|REB|INS|SEP|UAF|IGO)$/;
 /** Is this a state-level event? Armed forces/groups on either side, or two different countries; never a criminal actor. */
 export function stateLevel(f: string[]): boolean {
   const types = [f[12], f[13], f[14], f[22], f[23], f[24]];
   if (types.includes('CRM')) return false;
   if (types.some((t) => t && ARMED.test(t))) return true;
-  return !!(f[7] && f[17] && f[7] !== f[17]); // cross-border
+  // two countries, with a government, armed force or international body on at least one side (not "a Briton in Poland")
+  return !!(f[7] && f[17] && f[7] !== f[17] && types.some((t) => t && STATE.test(t)));
 }
 const stamp = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10) || 0, +s.slice(10, 12) || 0);
 

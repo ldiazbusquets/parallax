@@ -144,8 +144,10 @@ describe('GDELT events', () => {
   it('drops violence that is crime rather than war (no armed actor, armed group or second country)', () => {
     const crime = row({ ...base, 7: 'USA', 12: 'COP', 16: 'GUNMAN', 17: 'USA', 18: '', 22: 'CRM', 26: '193', 53: 'US' });
     const war = row({ ...base, 7: 'RUS', 12: 'MIL', 17: 'UKR', 18: '', 22: '', 53: 'UP' });
+    const gunman = row({ ...base, 7: '', 12: 'UAF', 17: 'USA', 22: '', 26: '193', 53: 'US' });
+    const tourist = row({ ...base, 7: 'GBR', 12: '', 17: 'POL', 22: '', 26: '193', 53: 'PL' });
     const strike = row({ ...base, 7: 'FRA', 12: 'LAB', 16: '', 18: '', 26: '143', 28: '14', 53: 'FR' });
-    expect(parseGdeltExport([crime, war, strike].join('\n')).map((e) => e[1])).toEqual(['conflict', 'unrest']);
+    expect(parseGdeltExport([crime, war, gunman, tourist, strike].join('\n')).map((e) => e[1])).toEqual(['conflict', 'unrest']);
   });
   it('re-applies current categories to events cached under the old rules', () => {
     const old = [Date.UTC(2026, 10, 7), 'protest', '141', 1, 1, 'X', 'US', '', '', 30, 5, 'u'] as unknown as Parameters<typeof summariseEvents>[0][number];
