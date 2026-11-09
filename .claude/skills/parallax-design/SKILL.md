@@ -13,7 +13,7 @@ they disagree on brand. Use them for craft and checks, never for colors, fonts o
 ## 1. Non-negotiables
 - **Real data only.** Every number comes from a named source. No placeholder figures, fake sparklines, sample
   rows or "fallback" values. If a source fails, show its error or stale state. Cite the provider in the footer.
-- **No yellow/amber.** Luis dislikes it. The single warm accent is `#ef6f3c` (orange-red), used sparingly.
+- **No yellow/amber.** Luis dislikes it. The single accent is silver blue `#7ca9d4` (hi `#a9c8e6`), as on his terminal/Lab, used sparingly.
 - **Calm, not flashy.** It's a tool people stare at for hours. Motion and color carry meaning, never decoration.
 
 ## 2. Tokens (src/ui/styles.css `:root`, src/ui/theme.ts `T`)
@@ -24,7 +24,7 @@ they disagree on brand. Use them for craft and checks, never for colors, fonts o
 | Raised / pill | `#1f1f1f` |
 | Text / dim / faint | `#f1f1f1` / `#9b9b9b` / `#626262` |
 | Up / down | `#5fd07a` / `#ff5147` (desaturated, never neon) |
-| Accent | `#ef6f3c`: window lows, focus ring, active command, event "flash" |
+| Accent | `#7ca9d4` silver blue: window lows, focus ring, active command, highlights |
 | Glass | `rgba(30,30,30,.55)` + `blur(20px) saturate(150%)`, border `rgba(255,255,255,.08)` |
 | Event colors | conflict `#ff5147`, protest `#5aa9ff`, coercion `#b48cff` |
 
@@ -35,7 +35,7 @@ they disagree on brand. Use them for craft and checks, never for colors, fonts o
 - Big overlay titles (map) 30px light, tight tracking.
 
 ## 4. Components
-- `<Panel title src span note right>` renders loading / error / needs-key states and the source + "updated" footer. Never hand-roll those.
+- `<Panel title src span note right>` renders loading / error / needs-key states; source and "updated" are in the header tooltip and status menu, and `note` folds under "About this data". Never hand-roll those.
 - Tabs and buttons are pills (999px). Active tab: light pill `#ececec` with dark text.
 - KPI tiles: `#1d1d1d`, radius 14px, label 12px dim, value via `<Big>`.
 - Tables: dashed row rules, light numerals, right-aligned numbers, sentence-case headers.

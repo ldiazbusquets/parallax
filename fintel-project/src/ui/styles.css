@@ -1,6 +1,6 @@
 :root {
   --bg: #0c0c0c; --panel: #161616; --raised: #1f1f1f; --line: #242424; --lineHi: #333333;
-  --text: #f1f1f1; --dim: #9b9b9b; --faint: #626262; --up: #5fd07a; --down: #ff5147; --accent: #ef6f3c;
+  --text: #f1f1f1; --dim: #9b9b9b; --faint: #626262; --up: #5fd07a; --down: #ff5147; --accent: #7ca9d4; --accent-hi: #a9c8e6;
   --glass: rgba(30,30,30,.55); --glassLine: rgba(255,255,255,.08);
   --mono: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; --sans: 'Outfit', 'Helvetica Neue', system-ui, sans-serif;
   --r: 22px; --r-sm: 14px;
@@ -229,13 +229,13 @@ input.in:focus { border-color: var(--accent); }
 
 /* =====================================================================================================
    v6 look: soft charcoal cards, light display numerals with dimmed decimals, pill controls, dashed
-   chart grids, glass overlays on the map, one warm accent used sparingly. Overrides the rules above.
+   chart grids, glass overlays on the map, one silver-blue accent used sparingly. Overrides the rules above.
    ===================================================================================================== */
 body { font: 400 13.5px/1.5 var(--sans); letter-spacing: .005em; background: radial-gradient(1200px 600px at 70% -10%, #1a1d1c 0%, transparent 60%), var(--bg); }
 html, #root { background: transparent; }
 html { background: var(--bg); }
 .mono, .num, table.t td { font-feature-settings: 'tnum' 1, 'lnum' 1; }
-::selection { background: #ef6f3c44; }
+::selection { background: #7ca9d455; }
 a:hover { color: #fff; }
 .link { color: var(--text); text-decoration-color: var(--faint); text-underline-offset: 3px; }
 
@@ -530,9 +530,9 @@ table.t.cal td.l { white-space: normal; line-height: 1.35; }
 table.t.cal td { vertical-align: top; }
 table.t.cal tr.past td { color: var(--faint); }
 table.t.cal tr.past .imp { opacity: .4; }
-table.t.cal tr.next td { background: rgba(239,111,60,.06); }
+table.t.cal tr.next td { background: rgba(124,169,212,.08); }
 .imp { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: #444; }
-.imp.high { background: var(--accent2, #ef6f3c); }
+.imp.high { background: var(--accent); }
 .imp.medium { background: #9b9b9b; }
 .cur { font: 500 11px var(--mono); color: var(--dim); margin-right: 4px; }
 
@@ -544,7 +544,7 @@ table.t th.sortable button { background: none; border: 0; padding: 0; font: inhe
 table.t th.sortable button:hover, table.t th[aria-sort="ascending"] button, table.t th[aria-sort="descending"] button { color: var(--text); }
 table.t th.l { text-align: left; }
 table.t.screen td.nm { max-width: 260px; overflow: hidden; text-overflow: ellipsis; font-family: var(--sans); }
-table.t .warm { color: #ef6f3c; }
+table.t .warm { color: var(--accent); }
 @container (max-width: 820px) { table.t .hide-m { display: none; } }
 table.t .only-s { display: none; color: var(--faint); font: 300 11px var(--sans); max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 @container (max-width: 560px) { table.t .hide-s { display: none; } .screen-ctl input.in { width: 100%; } table.t .only-s { display: block; } }
@@ -610,3 +610,15 @@ table.t .only-s { display: none; color: var(--faint); font: 300 11px var(--sans)
 .evdot.hz { background: transparent !important; border: 1.5px solid #3fd0c9; box-sizing: border-box; }
 .evdot.hz.red { box-shadow: 0 0 0 3px rgba(63,208,201,.18); }
 @media (max-width: 760px) { .install-btn { display: none; } }
+
+/* ---------- "About this data": card notes fold away until asked for ---------- */
+details.pnote { color: var(--faint); }
+details.pnote > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font: 300 11.5px var(--sans); color: var(--faint); user-select: none; }
+details.pnote > summary::-webkit-details-marker { display: none; }
+details.pnote > summary::before { content: 'i'; display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #3a3a3a; font: 500 9px var(--sans); color: var(--dim); }
+details.pnote > summary:hover, details.pnote[open] > summary { color: var(--dim); }
+details.pnote > div { margin-top: 6px; max-width: 70ch; }
+.evlegend .win { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--glass); backdrop-filter: blur(16px); border: 1px solid var(--glassLine); }
+.evlegend .win button { border: 0; background: transparent; padding: 3px 9px; backdrop-filter: none; }
+.evlegend .win button.on { background: #ececec; color: #111; }
+.cev-h .warm { color: var(--accent); }

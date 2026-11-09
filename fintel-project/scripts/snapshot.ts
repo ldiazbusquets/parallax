@@ -8,7 +8,7 @@ import { chartQuotes, chartLive, ohlcSnapName, SNAP_FILES } from '../src/data/ya
 import { ecoCalendar, govYields } from '../src/data/global';
 import { finnhubRecs, finraShortInterest, nasdaqScreener, TRACKED } from '../src/data/equity';
 import { unzipSync, strFromU8 } from 'fflate';
-import { parseGdeltExport, summariseEvents, type Ev } from '../src/data/events';
+import { parseGdeltExport, summariseWindow, type Ev } from '../src/data/events';
 import { fredMany, DAILY_IDS, MACRO_IDS, FRED_SINCE } from '../src/data/fred';
 import { EDGAR_FORMS, edgarUrl, edgarSnapName, FEEDS, finnhubEarnings, finnhubIpos, groqBrief, GROQ_MODEL, bisPolicy, imfWeo, finnhubCompanyNews } from '../src/data/sources';
 import { briefPrompt } from '../src/data/brief';
@@ -163,18 +163,20 @@ async function main() {
 
   if (want('events')) {
     await step('events', async () => {
-      // Rolling 24-hour window of GDELT event files (one every 15 min), kept in .cache between runs.
+      // Rolling 7-day window of GDELT event files (one every 15 min), kept in .cache between runs; the site shows
+      // the last 24 h by default, the 7 days on request, and each country's last 24 h against its daily average.
       const cacheFile = path.join(path.dirname(OUT), '..', '.cache', 'events-raw-v5.json');
       let cache: { done: string[]; evs: Ev[] } = { done: [], evs: [] };
       try { cache = JSON.parse(await readFile(cacheFile, 'utf8')); } catch { /* first run */ }
-      const now = Date.now(), cutoff = now - 24 * 3600_000, q = 15 * 60_000;
+      const now = Date.now(), cutoff = now - 7 * 864e5, q = 15 * 60_000, t0 = Date.now();
       const todo = [] as string[];
       for (let t = Math.floor(now / q) * q - 2 * q; t > cutoff; t -= q) { // newest first; the latest file can lag a few minutes
         const id = new Date(t).toISOString().replace(/[-:T]/g, '').slice(0, 12) + '00';
         if (!cache.done.includes(id)) todo.push(id);
       }
       let added = 0, files = 0;
-      for (const id of todo.slice(0, 96)) { // up to a full day per run (each file is small)
+      for (const id of todo.slice(0, 300)) { // newest first; the week fills over a few runs (each file is small)
+        if (Date.now() - t0 > 4 * 60_000) break;
         try {
           const res = await fetch(`http://data.gdeltproject.org/gdeltv2/${id}.export.CSV.zip`);
           if (res.status === 404) continue;
@@ -190,9 +192,9 @@ async function main() {
       if (!cache.evs.length) throw new Error('no GDELT events fetched');
       await mkdir(path.dirname(cacheFile), { recursive: true });
       await writeFile(cacheFile, JSON.stringify(cache));
-      const sum = summariseEvents(cache.evs);
+      const sum = summariseWindow(cache.evs, now);
       await save('events.json', sum);
-      return `${files} new files (+${added}) · ${sum.total} events in window · ${cache.done.length}/96 files`;
+      return `${files} new files (+${added}) · ${sum.total} events in 24 h, ${sum.week?.total} in the window · ${cache.done.length}/672 files`;
     }, 6 * 60_000);
   }
 

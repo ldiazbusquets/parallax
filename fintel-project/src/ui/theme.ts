@@ -11,7 +11,7 @@ export const T = {
   up: '#5fd07a',
   down: '#ff5147',
   accent: '#ececec',   // primary series: near-white lines, as in the reference
-  accent2: '#ef6f3c',  // the one warm highlight (lows, outliers, interlocks)
+  accent2: '#7ca9d4',  // the one highlight: silver blue, as on Luis's other sites (lows, outliers, interlocks)
   grid: '#2c2c2c',
   mono: "'Inter Tight', 'Helvetica Neue', Arial, sans-serif",
   sans: "'Outfit', 'Helvetica Neue', system-ui, sans-serif",

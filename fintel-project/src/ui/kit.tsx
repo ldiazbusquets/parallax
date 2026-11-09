@@ -32,7 +32,7 @@ interface PanelProps {
   src: SourceState<unknown> | SourceState<unknown>[];
   span?: string;                 // grid class, e.g. "c4", "c8"
   right?: ReactNode;             // header controls
-  note?: ReactNode;              // footnote under the body
+  note?: ReactNode;              // what the numbers are and where they come from, folded under "About this data"
   children?: ReactNode;
   hasData?: boolean;             // override: whether to render children
   id?: string;
@@ -53,7 +53,7 @@ export function Panel({ title, src, span = 'c4', right, note, children, hasData,
       <div className="pb">
         {has ? children : <Empty status={s.status} error={s.error} />}
       </div>
-      {note && <div className="pnote">{note}</div>}
+      {note && <details className="pnote"><summary>About this data</summary><div>{note}</div></details>}
     </section>
   );
 }

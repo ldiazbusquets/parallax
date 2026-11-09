@@ -88,16 +88,26 @@ export function parseGdeltExport(tsv: string, minMentions = 2, maxAgeDays = 7): 
 }
 
 export interface EventPoint { lat: number; lng: number; cat: EventCat; n: number; m: number; place: string; fips: string; last: number; code: string; url: string }
-export interface EventItem { t: number; cat: EventCat; label: string; place: string; fips: string; a1: string; a2: string; m: number; url: string; lat: number; lng: number }
-export interface EventsData { from: number; to: number; total: number; byCat: Record<EventCat, number>; points: EventPoint[]; top: EventItem[]; byCountry: Record<string, { n: number; byCat: Record<EventCat, number>; top: EventItem[] }> }
+export interface EventItem { t: number; cat: EventCat; label: string; place: string; fips: string; a1: string; a2: string; m: number; url: string; lat: number; lng: number; n?: number }
+export interface EventsData { from: number; to: number; total: number; byCat: Record<EventCat, number>; points: EventPoint[]; top: EventItem[]; byCountry: Record<string, { n: number; byCat: Record<EventCat, number>; top: EventItem[] }>;
+  /** Present on the published file: the 7-day window, and each country's last 24 h against its daily average over the 6 days before. */
+  week?: EventsData; trend?: Record<string, { today: number; avg: number; days: number }> }
 
 const item = (e: Ev): EventItem => ({ t: e[0], cat: e[1], label: cameoLabel(e[2]), place: e[5], fips: e[6], a1: e[7], a2: e[8], m: e[9], url: e[11], lat: e[3], lng: e[4] });
 const zero = (): Record<EventCat, number> => ({ conflict: 0, unrest: 0, sanctions: 0 });
-/** One event per source article (the same story is often coded several times). */
-function dedupe(evs: Ev[]) {
-  const best = new Map<string, Ev>();
-  for (const e of evs) { const k = e[11] + '|' + e[1]; const b = best.get(k); if (!b || e[9] > b[9]) best.set(k, e); }
-  return [...best.values()];
+const norm = (s: string) => s.trim().toUpperCase();
+/** One entry per story: the same article, or the same kind of event between the same actors in the same country,
+ *  is coded many times (and at several places). Keeps the most-mentioned record and counts the reports. */
+function dedupe(evs: Ev[]): [Ev, number][] {
+  const byUrl = new Map<string, Ev>();
+  for (const e of evs) { const k = e[11] + '|' + e[1]; const b = byUrl.get(k); if (!b || e[9] > b[9]) byUrl.set(k, e); }
+  const story = new Map<string, [Ev, number]>();
+  for (const e of byUrl.values()) {
+    const k = [e[1], cameoLabel(e[2]), norm(e[7]), norm(e[8]), e[6]].join('|');
+    const b = story.get(k);
+    if (!b) story.set(k, [e, 1]); else { b[1]++; if (e[9] > b[0][9]) b[0] = e; }
+  }
+  return [...story.values()];
 }
 
 /** Summarise a window of events: map points (merged by place and category), the most-covered events, and per country. */
@@ -112,17 +122,42 @@ export function summariseEvents(all: Ev[], topN = 80, perCountry = 12): EventsDa
     if (p) { p.n++; p.m += e[9]; if (e[0] > p.last) p.last = e[0]; if (e[9] > 0 && !p.url) p.url = e[11]; }
     else pts.set(k, { lat: e[3], lng: e[4], cat: e[1], n: 1, m: e[9], place: e[5], fips: e[6], last: e[0], code: e[2], url: e[11] });
   }
-  const unique = dedupe(evs).sort((a, b) => b[9] - a[9] || b[0] - a[0]);
+  // stories reported by several outlets first, then by mentions
+  const unique = dedupe(evs).sort((a, b) => b[1] - a[1] || b[0][9] - a[0][9] || b[0][0] - a[0][0]);
   const byCountry: EventsData['byCountry'] = {};
   for (const e of evs) { const c = (byCountry[e[6]] ||= { n: 0, byCat: zero(), top: [] }); c.n++; c.byCat[e[1]]++; }
-  for (const e of unique) { const c = byCountry[e[6]]; if (c && c.top.length < perCountry) c.top.push(item(e)); }
+  for (const [e, n] of unique) { const c = byCountry[e[6]]; if (c && c.top.length < perCountry) c.top.push({ ...item(e), n }); }
   delete byCountry[''];
   const times = evs.map((e) => e[0]);
   return {
     from: times.length ? Math.min(...times) : 0, to: times.length ? Math.max(...times) : 0, total: evs.length, byCat,
     points: [...pts.values()].sort((a, b) => b.m - a.m).slice(0, 4000),
-    top: unique.slice(0, topN).map(item), byCountry,
+    top: unique.slice(0, topN).map(([e, n]) => ({ ...item(e), n })), byCountry,
   };
+}
+
+/** The published file: the last 24 h (top level, as before), the last 7 days, and each country's 24 h vs its normal. */
+export function summariseWindow(all: Ev[], now: number): EventsData {
+  const dayCut = now - 864e5;
+  const day = summariseEvents(all.filter((e) => e[0] > dayCut));
+  const week = summariseEvents(all, 120, 12);
+  const kept = all.flatMap((e) => { const r = recategorise(e); return r && important(r) ? [r] : []; });
+  const first = kept.length ? Math.min(...kept.map((e) => e[0])) : now;
+  const days = Math.min(6, Math.max(0, (dayCut - first) / 864e5)); // how much history there is before today
+  const trend: NonNullable<EventsData['trend']> = {};
+  for (const e of kept) {
+    if (!e[6]) continue;
+    const t = (trend[e[6]] ||= { today: 0, avg: 0, days: Math.round(days * 10) / 10 });
+    if (e[0] > dayCut) t.today++; else t.avg++;
+  }
+  for (const t of Object.values(trend)) t.avg = days >= 1 ? Math.round((t.avg / days) * 10) / 10 : 0;
+  return { ...day, week: { ...week, points: week.points.slice(0, 3000) }, trend };
+}
+
+/** Today vs normal, as a multiple ("2.4×"), when there's at least 2 days of history and a meaningful base. */
+export function vsNormal(t?: { today: number; avg: number; days: number }): number | null {
+  if (!t || t.days < 2 || t.avg < 2) return null;
+  return t.today / t.avg;
 }
 
 export const EVENTS: SourceDef<EventsData> = {

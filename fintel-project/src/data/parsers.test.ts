@@ -156,3 +156,26 @@ describe('GDELT events', () => {
     expect(summariseEvents([old, strike]).byCat).toEqual({ conflict: 0, unrest: 1, sanctions: 0 });
   });
 });
+
+import { summariseWindow, vsNormal } from './events';
+describe('events window and normal', () => {
+  type E = Parameters<typeof summariseWindow>[0][number];
+  const now = Date.UTC(2026, 10, 8, 12);
+  const ev = (hoursAgo: number, fips: string, url: string, a1 = 'RUSSIA', a2 = 'UKRAINE', code = '195'): E => [now - hoursAgo * 3600e3, 'conflict', code, 48, 37, 'Kyiv', fips, a1, a2, 5, 2, url] as E;
+  it('groups one story reported by many outlets and counts the reports', () => {
+    const s = summariseWindow([ev(1, 'UP', 'a'), ev(2, 'UP', 'b'), ev(3, 'UP', 'c'), ev(4, 'UP', 'd', 'ISRAEL', 'IRAN')], now);
+    expect(s.top.map((e) => [e.a1, e.n])).toEqual([['RUSSIA', 3], ['ISRAEL', 1]]);
+    expect(s.total).toBe(4);
+  });
+  it('compares the last 24 h with the daily average before it', () => {
+    const evs: E[] = [];
+    for (let d = 1; d <= 6; d++) for (let i = 0; i < 4; i++) evs.push(ev(24 * d + i + 1, 'UP', `old${d}${i}`));
+    for (let i = 0; i < 12; i++) evs.push(ev(i + 1, 'UP', `new${i}`));
+    const s = summariseWindow(evs, now);
+    expect(s.total).toBe(12);
+    expect(s.week?.total).toBe(36);
+    expect(s.trend?.UP.today).toBe(12);
+    expect(vsNormal(s.trend?.UP)).toBeCloseTo(3, 0);
+    expect(vsNormal({ today: 5, avg: 1, days: 6 })).toBeNull(); // base too small to mean anything
+  });
+});

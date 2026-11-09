@@ -81,8 +81,11 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Candles: `parseChart` keeps OHLCV when every bar is complete; the site publishes 1y daily bars per tracked symbol in
   `snap/ohlc/<SYM>.json` (rebuilt daily). Line/Candles choice is saved per browser (`fintel.chartstyle`).
 - Events (`src/data/events.ts`): only market-moving CAMEO codes: conflict = roots 19/20, 181/183/186, root 15, 138/139;
-  unrest = 143/144/145; sanctions = 163*. Kept only if `important` (≥2 sources or ≥10 mentions). Ordinary protests,
-  assaults and arrests are dropped. `summariseEvents` re-categorises the cached window, so rule changes apply at once.
+  unrest = 143/144/145; sanctions = 163*. Conflict/sanctions also need `stateLevel` (armed actor type, or two countries
+  with a state actor or country-coded actors; never CRM). Kept if `important` (≥2 sources or ≥3 mentions; files record
+  first sight, so counts are low). The job keeps 7 days; `summariseWindow` publishes 24 h at the top level plus `week`
+  and `trend` (24 h vs daily average → `vsNormal`). Stories are grouped (`n` reports). The 24h/7d choice is shared
+  (`src/ui/evwindow.ts`). `summariseEvents` re-categorises the cached window, so rule changes apply at once.
 - Hazards (`src/data/hazards.ts`, CORS, live): USGS `summary/4.5_week` + `significant_month` (keep significant, M6+, tsunami=1);
   GDACS `gdacsapi/api/events/geteventlist/SEARCH?eventlist=TC;FL;VO;DR;WF&alertlevel=Orange;Red` (EQ comes from USGS);
   NASA EONET wildfires (IRWIN acres, ≥1,000, prescribed burns excluded).
@@ -97,7 +100,9 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Charcoal `#0c0c0c` page, 22px rounded gradient cards with no header rules, sentence-case titles with a faint ↗.
 - Outfit for UI text, Inter Tight (light, tabular) for numbers; `<Big>` dims the decimals of display numbers.
 - Pills for tabs/buttons; dashed grids; LineChart marks the window high (white) and low (warm dot).
-- One warm accent `#ef6f3c`, used sparingly (lows, focus, active command). Luis dislikes yellow/amber: don't drift toward it.
+- One silver-blue accent `#7ca9d4` (hi `#a9c8e6`), the same as Luis's terminal/Lab, used sparingly (lows, focus, active
+  command). It replaced the orange `#ef6f3c` in Nov 2026. Luis dislikes yellow/amber: don't drift toward it.
+- Card notes fold under an "About this data" disclosure; keep source/method text there, not on the card face.
 - Map: Esri World Imagery (desaturated) only (Luis removed the Streets view); overlays are glass (`--glass`).
   Add map layers once the style has parsed (`styleReady`), not `isStyleLoaded()`, which waits for every tile.
 
@@ -106,6 +111,10 @@ The app lives in `fintel-project/`. See its README for running it and the source
   (aisstream.io websocket, free key; would need a small relay).
 - Cargo flights: OpenSky Network / adsb.lol ADS-B positions filtered to cargo operators (FedEx FDX, UPS, Atlas GTI,
   Cargolux CLX, Kalitta, Cathay/Emirates/Qatar cargo callsigns) as a map layer with hub traffic counts.
+- Site freshness: GitHub's scheduler only fires the */15 deploy cron every few hours on this repo, so snapshot data
+  (quotes on the site, FRED, events…) can be hours old. Fix: an external pinger (e.g. cron-job.org) calling
+  `workflow_dispatch` with a fine-grained token Luis creates (Actions: write on this repo only).
+- Events linked to markets: conflict/hazards near a chokepoint shown with its traffic and oil.
 - Admin/health page across Luis's sites (uptime, deploy status, key expiry such as the Canvas token): pinned for later.
 - Earnings-season beat rate across a full season (needs a longer Finnhub window).
 - Institutional holders (13F) and activist stakes (13D/G) as extra edges in the link view.

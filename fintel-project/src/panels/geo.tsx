@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { EVENT_CATS, EVENTS, FIPS, type EventCat } from '@/data/events';
+import { EVENT_CATS, EVENTS, FIPS, vsNormal, type EventCat } from '@/data/events';
+import { pickWindow, useEventWindow } from '@/ui/evwindow';
 import { useSource } from '@/data/store';
 import { Chg, Panel, Spark, Tabs, useNow, Big } from '@/ui/kit';
 import { ago, dateLabel, isNum } from '@/lib/format';
@@ -19,21 +20,27 @@ export function WorldEvents() {
   const hz = useSource(HAZARDS);
   const now = useNow();
   const [cat, setCat] = useState<Tab>('all');
-  const d = s.data;
+  const [win, setWin] = useEventWindow();
+  const d = pickWindow(s.data, win);
+  const trend = s.data?.trend ?? {};
   const hazards = hz.data?.items ?? [];
   const severe = hazards.filter((h) => h.level === 'red' || h.level === 'orange');
   const rows = (d?.top ?? []).filter((e) => cat === 'all' || e.cat === cat);
   const hzRows = cat === 'hazard' ? hazards : cat === 'all' ? severe : [];
-  const hot = d ? Object.entries(d.byCountry).filter(([f]) => ISO_BY_FIPS[f]).sort((a, b) => b[1].byCat.conflict - a[1].byCat.conflict).slice(0, 5) : [];
+  // countries whose last 24 h runs furthest above their own normal (needs a few days of history)
+  const rising = Object.entries(trend).map(([f, t]) => [f, vsNormal(t), t.today] as const).filter(([f, x, n]) => ISO_BY_FIPS[f] && x != null && x >= 1.3 && n >= 5).sort((a, b) => b[1]! - a[1]!).slice(0, 3);
+  const hot = d ? Object.entries(d.byCountry).filter(([f]) => ISO_BY_FIPS[f]).sort((a, b) => b[1].byCat.conflict - a[1].byCat.conflict).slice(0, 3) : [];
   const name = (() => { let dn: Intl.DisplayNames | undefined; try { dn = new Intl.DisplayNames(['en'], { type: 'region' }); } catch { /* old browser */ } return (iso3: string) => { const c = iso3 ? FIPS[iso3] : ''; return c ? (dn?.of(iso2(iso3)) ?? iso3) : iso3; }; })();
   return (
     <Panel id="p-events" title="Market-moving events" src={[s, hz]} span="c8" hasData={!!d || !!hz.data}
-      right={<Tabs small value={cat} onChange={setCat} options={[['all', 'All'], ...EVENT_CATS.map((c) => [c.id, c.label.split(' ')[0]] as [EventCat, string]), ['hazard', 'Hazards']]} />}
-      note="War, strikes, sanctions: machine-coded from news by the GDELT Project, kept only when several outlets report it; open the source before relying on one. Hazards: USGS (significant or M6+ quakes, tsunami flags), GDACS Orange/Red alerts (cyclones, floods, volcanoes, droughts) and NASA EONET wildfires over 1,000 acres. Click a row to see it on the map.">
+      right={<div className="tabrow"><Tabs small value={win} onChange={setWin} options={[['24h', '24h'], ['7d', '7d']]} /><Tabs small value={cat} onChange={setCat} options={[['all', 'All'], ...EVENT_CATS.map((c) => [c.id, c.label.split(' ')[0]] as [EventCat, string]), ['hazard', 'Hazards']]} /></div>}
+      note="War, strikes, sanctions: machine-coded from news by the GDELT Project (last 24 hours or 7 days); repeated reports of one story are grouped. “× normal” compares a country’s last 24 hours with its daily average over the days before. Open the source before relying on one. Hazards: USGS (significant or M6+ quakes, tsunami flags), GDACS Orange/Red alerts (cyclones, floods, volcanoes, droughts) and NASA EONET wildfires over 1,000 acres. Click a row to see it on the map.">
       <div className="kpis">
-        {EVENT_CATS.map((c) => <div className="kpi" key={c.id}><span><i className="evdot" style={{ background: c.color }} />{c.label}</span><b><Big>{d ? d.byCat[c.id].toLocaleString('en-US') : '—'}</Big></b><small>events · 24h</small></div>)}
+        {EVENT_CATS.map((c) => <div className="kpi" key={c.id}><span><i className="evdot" style={{ background: c.color }} />{c.label}</span><b><Big>{d ? d.byCat[c.id].toLocaleString('en-US') : '—'}</Big></b><small>events · {win}</small></div>)}
         <div className="kpi"><span><i className="evdot" style={{ background: HAZARD_COLOR }} />Natural hazards</span><b><Big>{hz.data ? String(hazards.length) : '—'}</Big></b><small>{hz.data ? `${severe.filter((h) => h.level === 'red').length} red · ${severe.filter((h) => h.level === 'orange').length} orange · 14d` : hz.error ?? ''}</small></div>
-        <div className="kpi"><span>Most conflict</span><b style={{ fontSize: 15, lineHeight: 1.5 }}>{hot.map(([f, v]) => `${name(ISO_BY_FIPS[f])} ${v.byCat.conflict}`).slice(0, 3).join(' · ') || '—'}</b><small>tracked countries · 24h</small></div>
+        {rising.length
+          ? <div className="kpi"><span>Above normal</span><b style={{ fontSize: 15, lineHeight: 1.5 }}>{rising.map(([f, x]) => `${name(ISO_BY_FIPS[f])} ${x!.toFixed(1)}×`).join(' · ')}</b><small>last 24 h vs daily average</small></div>
+          : <div className="kpi"><span>Most conflict</span><b style={{ fontSize: 15, lineHeight: 1.5 }}>{hot.map(([f, v]) => `${name(ISO_BY_FIPS[f])} ${v.byCat.conflict}`).join(' · ') || '—'}</b><small>tracked countries · {win}</small></div>}
       </div>
       <ul className="feed evfeed">
         {hzRows.map((h) => (
@@ -49,7 +56,7 @@ export function WorldEvents() {
             <span className="meta">{ago(e.t, now)}</span>
             <i className="evdot" style={{ background: EVENT_CATS.find((c) => c.id === e.cat)?.color }} />
             <span className="ttl">{e.label}{e.a1 || e.a2 ? <span className="dim"> · {[e.a1, e.a2].filter(Boolean).map(tidyActor).join(' → ')}</span> : null}
-              <small>{e.place} · {e.m} mentions · <a href={e.url} target="_blank" rel="noopener noreferrer" onClick={(x) => x.stopPropagation()}>{host(e.url)} ↗</a></small></span>
+              <small>{e.place} · {e.n && e.n > 1 ? `${e.n} reports` : `${e.m} mentions`} · <a href={e.url} target="_blank" rel="noopener noreferrer" onClick={(x) => x.stopPropagation()}>{host(e.url)} ↗</a></small></span>
           </li>
         ))}
         {(cat === 'hazard' ? hz.data && !hzRows.length : d && !rows.length && !hzRows.length) && <li className="dim">Nothing of this type in the window.</li>}

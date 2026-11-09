@@ -7,10 +7,11 @@ import type { Feature, FeatureCollection } from 'geojson';
 import countriesUrl from 'world-atlas/countries-50m.json?url';
 import { isStaleQuote, useQuotes } from '@/data/yahoo';
 import { useSource } from '@/data/store';
-import { EVENT_CATS, EVENTS, FIPS, cameoLabel, type EventCat, type EventsData } from '@/data/events';
+import { EVENT_CATS, EVENTS, FIPS, cameoLabel, vsNormal, type EventCat, type EventsData } from '@/data/events';
 import { IMF, IMF_INDICATORS, POLICY, WB_INDICATORS, worldBankSource, type ImfData } from '@/data/sources';
 import { bondId, policyArea, COUNTRIES, type Country } from '@/data/universe';
 import { HAZARDS, HAZARD_COLOR, HAZARD_LABEL, type Hazard } from '@/data/hazards';
+import { pickWindow, useEventWindow } from '@/ui/evwindow';
 import { LANES_URL, SHIPPING, weekAvg, yearBefore, type ShippingData } from '@/data/shipping';
 import { FRED_MACRO } from '@/data/fred';
 import { big, num, price } from '@/lib/format';
@@ -174,6 +175,8 @@ export function WorldMap() {
   const imf = useSource(IMF);
   const [fundTab, setFundTab] = useState<'imf' | 'wb'>('imf');
   const ev = useSource(EVENTS);
+  const [win, setWin] = useEventWindow();
+  const evd = pickWindow(ev.data, win);
   const [showEv, setShowEv] = useState(true);
   const [evCats, setEvCats] = useState<Set<EventCat>>(() => new Set(EVENT_CATS.map((c) => c.id)));
   const evRef = useRef({ data: EMPTY as FeatureCollection, show: true });
@@ -253,11 +256,11 @@ export function WorldMap() {
 
   // events layer: data, category filter and visibility
   useEffect(() => {
-    evRef.current = { data: eventsGeo(ev.data, evCats), show: showEv };
+    evRef.current = { data: eventsGeo(evd, evCats), show: showEv };
     const m = map.current; if (!m) return;
     (m.getSource('events') as maplibregl.GeoJSONSource | undefined)?.setData(evRef.current.data);
     for (const id of ['events', 'events-glow']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', showEv ? 'visible' : 'none');
-  }, [ev.data, evCats, showEv]);
+  }, [evd, evCats, showEv]);
   // other panels (the events feed) can point the map at a place
   useEffect(() => {
     const f = (e: Event) => {
@@ -319,7 +322,8 @@ export function WorldMap() {
   const pr = sel ? pol.data?.[policyArea(sel) ?? ''] : undefined;
   const bondPrev = bs && bs.length > 12 ? bs[bs.length - 13] : undefined;
   return (
-    <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev, hz, ship]} span="c8 mappanel" hasData>
+    <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev, hz, ship]} span="c8 mappanel" hasData
+      note={<>Country dots: today’s move in the main stock index (Yahoo Finance). Events: war, strikes and sanctions machine-coded from news by the GDELT Project, last 24 hours or 7 days; natural hazards from USGS, GDACS and NASA EONET, last 14 days. Shipping: chokepoint traffic from IMF PortWatch; lanes © P. Benden (CC BY 4.0), from the CIA World Oceans map. Country card: BIS, FRED/OECD, IMF and World Bank. Imagery © Esri.</>}>
       <div className="mapwrap">
         <div ref={box} className="mapcanvas" />
         {mapErr && <div className="maperr" role="status">{mapErr}</div>}
@@ -331,13 +335,13 @@ export function WorldMap() {
           {EVENT_CATS.map((c) => (
             <button key={c.id} className={showEv && evCats.has(c.id) ? 'on' : ''} title={c.hint} aria-pressed={evCats.has(c.id)}
               onClick={() => { setShowEv(true); setEvCats((s) => { const n = new Set(s); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; }); }}>
-              <i style={{ background: c.color }} />{c.label}{ev.data ? <span>{ev.data.byCat[c.id].toLocaleString('en-US')}</span> : null}
+              <i style={{ background: c.color }} />{c.label}{evd ? <span>{evd.byCat[c.id].toLocaleString('en-US')}</span> : null}
             </button>
           ))}
           <button className={showHz ? 'on' : ''} aria-pressed={showHz} title="Significant earthquakes and tsunami flags (USGS), Orange/Red cyclone, flood, volcano and drought alerts (GDACS), large wildfires (NASA EONET), last 14 days" onClick={() => setShowHz((v) => !v)}>
             <i style={{ background: HAZARD_COLOR }} />Natural hazards{hz.data ? <span>{hz.data.items.length}</span> : null}
           </button>
-          <small>GDELT 24h · hazards 14d</small>
+          <span className="win" role="group" aria-label="Events window">{(['24h', '7d'] as const).map((w) => <button key={w} className={win === w ? 'on' : ''} aria-pressed={win === w} onClick={() => setWin(w)}>{w}</button>)}</span>
         </div>}
         <div className="maplegend"><span>Index today</span><span style={{ width: 90, height: 6, borderRadius: 3, background: 'linear-gradient(90deg,#cd3a34,#2a2a2a,#349652)', display: 'inline-block' }} /><span>−2% … +2%</span></div>
         {sel && (
@@ -354,7 +358,7 @@ export function WorldMap() {
                 {sel.bond && <tr title="Monthly average long-term (10-year) government bond yield, OECD via FRED. Change is versus a year earlier."><td>10Y gov't yield<br /><small className="faint">{bond ? new Date(bond.d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'OECD'}</small></td><td>{bond ? bond.v.toFixed(2) + '%' : '—'}</td><td>{bond && bondPrev ? <Chg v={(bond.v - bondPrev.v) * 100} dp={0} suffix="bp" invert /> : ''}</td></tr>}
               </tbody>
             </table>
-            <CountryEvents d={ev.data} fips={FIPS[sel.iso3]} />
+            <CountryEvents d={evd} fips={FIPS[sel.iso3]} win={win} trend={ev.data?.trend} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 0 4px' }}>
               <span className="faint" style={{ fontSize: 12 }}>Fundamentals</span>
               <Tabs small value={fundTab} onChange={setFundTab} options={[['imf', 'IMF outlook'], ['wb', 'World Bank']]} />
@@ -394,17 +398,18 @@ function ImfCard({ d, iso3, err }: { d?: ImfData; iso3: string; err?: string }) 
 }
 
 /** Last-24h events for the selected country (GDELT), with the most-covered few. */
-function CountryEvents({ d, fips }: { d?: EventsData; fips?: string }) {
+function CountryEvents({ d, fips, win, trend }: { d?: EventsData; fips?: string; win: string; trend?: EventsData['trend'] }) {
   if (!d || !fips) return null;
   const c = d.byCountry[fips];
+  const x = vsNormal(trend?.[fips]);
   return (
     <div className="cev">
-      <div className="cev-h"><span className="faint" style={{ fontSize: 12 }}>Events · 24h</span>
+      <div className="cev-h"><span className="faint" style={{ fontSize: 12 }}>Events · {win}{x != null ? <span className={x >= 1.5 ? 'warm' : ''} title={`Last 24 h: ${trend![fips].today} events vs ${trend![fips].avg} a day over the ${trend![fips].days} days before`}> · {x.toFixed(1)}× normal</span> : null}</span>
         <span className="cev-n">{EVENT_CATS.map((k) => <span key={k.id} title={k.label}><i style={{ background: k.color }} />{(c?.byCat[k.id] ?? 0).toLocaleString('en-US')}</span>)}</span>
       </div>
       {c?.top.length ? <ul className="cev-l">{c.top.slice(0, 3).map((e, i) => (
-        <li key={i}><i style={{ background: EVENT_CATS.find((k) => k.id === e.cat)?.color }} /><span><b>{e.label}</b>{e.a1 || e.a2 ? ` · ${[e.a1, e.a2].filter(Boolean).map(tidyActor).join(' → ')}` : ''}<small>{e.place} · {e.m} mentions · <a href={e.url} target="_blank" rel="noopener noreferrer">{host(e.url)}</a></small></span></li>
-      ))}</ul> : <p className="faint" style={{ fontSize: 11.5 }}>No widely reported conflict, unrest or sanctions events in the last 24 hours.</p>}
+        <li key={i}><i style={{ background: EVENT_CATS.find((k) => k.id === e.cat)?.color }} /><span><b>{e.label}</b>{e.a1 || e.a2 ? ` · ${[e.a1, e.a2].filter(Boolean).map(tidyActor).join(' → ')}` : ''}<small>{e.place}{e.n && e.n > 1 ? ` · ${e.n} reports` : ` · ${e.m} mentions`} · <a href={e.url} target="_blank" rel="noopener noreferrer">{host(e.url)}</a></small></span></li>
+      ))}</ul> : <p className="faint" style={{ fontSize: 11.5 }}>No widely reported conflict, unrest or sanctions events in this window.</p>}
     </div>
   );
 }
