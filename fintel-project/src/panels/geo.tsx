@@ -90,7 +90,7 @@ export function Shipping() {
     const trade = (portWeek(ser, pd!.last, 'imp') ?? 0) + (portWeek(ser, pd!.last, 'exp') ?? 0);
     return { p, now, yoy: now != null && prev ? (now / prev - 1) * 100 : null, trade, spark: (ser ?? []).filter((x) => x.d > yearBefore(pd!.last)).map((x) => x.calls) };
   }).filter((r) => r.now != null).sort((a, b) => b.now! - a.now!);
-  const atRisk = rows.filter((r) => { const k = riskBy.get(r.p.id); return k && (k.conflict + k.sanctions > 0 || k.hazards.length > 0); })
+  const atRisk = rows.filter((r) => hot(r.p.id))
     .sort((a, b) => { const x = riskBy.get(a.p.id)!, y = riskBy.get(b.p.id)!; return (y.conflict + y.hazards.length * 20) - (x.conflict + x.hazards.length * 20); });
   const brent = oil.data?.['BZ=F'], wti = oil.data?.['CL=F'];
   const src = tab === 'ports' ? pw : tab === 'risk' ? [s, ev, hz, oil] : s;
@@ -100,7 +100,7 @@ export function Shipping() {
       note={tab === 'ports'
         ? `Port calls per day at the ${pd?.ports.length ?? 30} busiest ports, averaged over the 7 days to ${pd ? dateLabel(pd.last) : 'the latest report'}, with estimated cargo handled (imports + exports, metric tons), from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier.`
         : tab === 'risk'
-          ? 'Chokepoints with fighting (assaults, armed clashes, mass violence), unrest or sanctions events within 300 km in the last 7 days (GDELT, widely reported events located to a city or region; country-wide reports, threats and troop movements are left out) or an orange/red natural-hazard alert nearby (USGS, GDACS, NASA EONET). Shown with the chokepoint’s traffic and the oil price. Proximity is not proof that shipping is affected.'
+          ? 'Chokepoints with at least 3 reports of fighting (assaults, armed clashes, mass violence) within 250 km in the last 7 days, or an orange/red natural-hazard alert nearby; unrest and sanctions events nearby are listed too. Events come from GDELT (widely reported, located to a city or region; country-wide reports, threats and troop movements are left out) or an orange/red natural-hazard alert nearby (USGS, GDACS, NASA EONET). Shown with the chokepoint’s traffic and the oil price. Proximity is not proof that shipping is affected.'
           : `Ships passing each chokepoint per day, averaged over the 7 days to ${d ? dateLabel(d.last) : 'the latest report'}, from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier. A dot marks fighting or a hazard nearby (see Risk). Click a row to see it on the map.`}>
       {tab === 'choke' && <table className="t">
         <thead><tr><th>Chokepoint</th><th>Ships/day</th><th>YoY</th><th className="hs">Tankers</th><th>120d</th></tr></thead>

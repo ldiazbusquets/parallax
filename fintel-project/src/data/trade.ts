@@ -134,7 +134,7 @@ export const violent = (code: string) => /^(18|19|20)/.test(code);
 /** Violent events, unrest and sanctions (GDELT, last 7 days) and alerted natural hazards within `radius` km of each
  *  chokepoint. GDELT points geocoded only to a whole country sit on its centroid, which says nothing about a strait,
  *  so those are left out; so are threats and military posture, which GDELT often places at capitals. */
-export function chokeRisk(points: Chokepoint[], events: EventPoint[], hazards: Hazard[], radius = 300): ChokeRisk[] {
+export function chokeRisk(points: Chokepoint[], events: EventPoint[], hazards: Hazard[], radius = 250): ChokeRisk[] {
   return points.map((c) => {
     const r: ChokeRisk = { id: c.id, conflict: 0, unrest: 0, sanctions: 0, hazards: [], places: [] };
     const places = new Map<string, number>();
