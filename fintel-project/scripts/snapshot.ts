@@ -359,11 +359,11 @@ async function main() {
       // 13F filings change once a quarter: check daily for a newer one; CUSIP → ticker map is kept in .cache
       const old = await readSnap<FundsData>('funds.json');
       if (old && Date.now() - old.generated < 20 * 3600_000) return 'cached (daily)';
-      const cus = await readCache<Record<string, string | null>>('cusips.json', {});
+      const cus = await readCache<Record<string, string | null>>('cusips-v2.json', {});
       const raw: { def: (typeof FUNDS)[number]; r: Awaited<ReturnType<typeof latest13F>> }[] = [], errors: string[] = [];
       for (const def of FUNDS) { try { raw.push({ def, r: await latest13F(def) }); } catch (e) { errors.push(`${def.name}: ${(e as Error).message}`); log('  13F', def.name, (e as Error).message); } }
       const need = [...new Set(raw.flatMap((x) => x.r.rows.slice(0, 40).map((h) => h.cusip)))].filter((c) => !(c in cus));
-      if (need.length) { try { Object.assign(cus, await figiTickers(need.slice(0, 600))); } catch (e) { log('  openfigi', (e as Error).message); } await writeCache('cusips.json', cus); }
+      if (need.length) { try { Object.assign(cus, await figiTickers(need.slice(0, 600))); } catch (e) { log('  openfigi', (e as Error).message); } await writeCache('cusips-v2.json', cus); }
       const funds: Fund[] = raw.map(({ def, r }) => ({ cik: def.cik, name: def.name, style: def.style, period: r.period, filed: r.filed, positions: r.rows.length, link: r.link, ...shapeHoldings(r.rows, cus) }));
       if (!funds.length) throw new Error(errors.join('; '));
       await save('funds.json', { funds, errors } satisfies FundsData);

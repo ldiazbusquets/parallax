@@ -29,8 +29,9 @@ export function layout(nodes: N[], edges: E[], W: number, H: number, iters = 260
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = (d * d) / k / d;
       a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
     }
+    const pull = Math.min(1, 90 / Math.max(1, nodes.length)); // big graphs need room to spread out
     for (const n of nodes) {
-      n.vx += (W / 2 - 50 - n.x) * 0.5; n.vy += (H / 2 - n.y) * 0.8; // pull toward the centre so separate clusters stay in view
+      n.vx += (W / 2 - 50 - n.x) * 0.5 * pull; n.vy += (H / 2 - n.y) * 0.8 * pull; // pull toward the centre so separate clusters stay in view
       const v = Math.sqrt(n.vx * n.vx + n.vy * n.vy) || 1, step = Math.min(v, 40 * t + 0.5);
       n.x = Math.max(n.r + 10, Math.min(W - n.r - 110, n.x + (n.vx / v) * step)); // room for labels on the right
       n.y = Math.max(n.r + 10, Math.min(H - n.r - 10, n.y + (n.vy / v) * step));
@@ -71,13 +72,13 @@ export function LinkView({ onOpen }: { onOpen: (t: string) => void }) {
   const [focus, setFocus] = useState<string | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const q = useQuotes(net.data?.companies.map((c) => c.ticker) ?? []);
-  const W = 900, H = 520;
+  const W = 900, big = (net.data?.companies.length ?? 0) > 120, H = big ? 680 : 520;
   const g = useMemo(() => {
     if (!net.data) return null;
     const r = graphFor(net.data, mode, focus);
     layout(r.nodes, r.edges, W, H, r.nodes.length > 250 ? 120 : 260);
     return r;
-  }, [net.data, mode, focus]);
+  }, [net.data, mode, focus, H]);
   const selNode = g?.nodes.find((n) => n.id === sel);
   const selPerson = sel?.startsWith('p:') ? g?.people.find((p) => 'p:' + p.cik === sel) : undefined;
   const selHolder = sel && /^[fd]:/.test(sel) ? net.data?.holders?.find((h) => h.id === sel) : undefined;
@@ -110,12 +111,12 @@ export function LinkView({ onOpen }: { onOpen: (t: string) => void }) {
               }
               if (n.kind === 'fund' || n.kind === '13D') return <g key={n.id} transform={`translate(${n.x},${n.y})`} style={{ cursor: 'pointer' }} opacity={dim ? 0.25 : 1} onClick={(e) => { e.stopPropagation(); setSel(n.id); }}>
                 {n.kind === 'fund' ? <rect x={-n.r} y={-n.r} width={n.r * 2} height={n.r * 2} rx="2" fill={T.accent2} /> : <path d={`M0 ${-n.r - 1} L${n.r + 1} ${n.r} L${-n.r - 1} ${n.r}Z`} fill={T.text} />}
-                <text x={n.r + 3} y="3" style={{ fill: T.text, font: '10px var(--sans)' }}>{n.label}</text>
+                {(!big || focus || n.id === sel || nb.has(n.id) || n.kind === 'fund') && <text x={n.r + 3} y="3" style={{ fill: T.text, font: '10px var(--sans)' }}>{n.label}</text>}
               </g>;
               const multi = n.r > 4;
               return <g key={n.id} transform={`translate(${n.x},${n.y})`} style={{ cursor: 'pointer' }} opacity={dim ? 0.25 : 1} onClick={(e) => { e.stopPropagation(); setSel(n.id); }}>
                 <circle r={n.r} fill={multi ? T.accent2 : T.dim} />
-                {(multi && mode === 'links') || n.id === sel ? <text x={n.r + 3} y="3" style={{ fill: T.text, font: '10px var(--sans)' }}>{n.label}</text> : null}
+                {(multi && mode === 'links' && (!big || focus || (g.people.find((p) => 'p:' + p.cik === n.id)?.links.length ?? 0) >= 3)) || n.id === sel || nb.has(n.id) ? <text x={n.r + 3} y="3" style={{ fill: T.text, font: '10px var(--sans)' }}>{n.label}</text> : null}
               </g>;
             })}
           </svg>

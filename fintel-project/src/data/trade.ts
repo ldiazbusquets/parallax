@@ -126,14 +126,17 @@ export function km(a: { lat: number; lng: number }, b: { lat: number; lng: numbe
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 export interface ChokeRisk { id: string; conflict: number; unrest: number; sanctions: number; hazards: Hazard[]; places: string[] }
-/** Events (GDELT, last 7 days) and natural hazards within `radius` km of each chokepoint. GDELT points geocoded only
- *  to a whole country sit on its centroid, which says nothing about a strait, so those are left out. */
-export function chokeRisk(points: Chokepoint[], events: EventPoint[], hazards: Hazard[], radius = 500): ChokeRisk[] {
+/** Fighting, not posture or threats: CAMEO 18x (assault), 19x (fight), 20x (mass violence). */
+export const violent = (code: string) => /^(18|19|20)/.test(code);
+/** Violent events, unrest and sanctions (GDELT, last 7 days) and alerted natural hazards within `radius` km of each
+ *  chokepoint. GDELT points geocoded only to a whole country sit on its centroid, which says nothing about a strait,
+ *  so those are left out; so are threats and military posture, which GDELT often places at capitals. */
+export function chokeRisk(points: Chokepoint[], events: EventPoint[], hazards: Hazard[], radius = 300): ChokeRisk[] {
   return points.map((c) => {
     const r: ChokeRisk = { id: c.id, conflict: 0, unrest: 0, sanctions: 0, hazards: [], places: [] };
     const places = new Map<string, number>();
     for (const e of events) {
-      if (!e.place.includes(',') || km(c, e) > radius) continue;
+      if (!e.place.includes(',') || (e.cat === 'conflict' && !violent(e.code)) || km(c, e) > radius) continue;
       r[e.cat] += e.n;
       if (e.cat === 'conflict') places.set(e.place.split(',')[0], (places.get(e.place.split(',')[0]) ?? 0) + e.n);
     }

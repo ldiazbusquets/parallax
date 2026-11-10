@@ -10,6 +10,7 @@ import { openCompany } from './company';
 
 // Phase 4: who owns what. Fund portfolios (13F), 5%+ holders (13D/13G) and the earnings season's beat rate.
 
+const oldCut = new Date(Date.now() - 270 * 864e5).toISOString().slice(0, 10);
 const STYLE: Record<string, string> = { activist: 'Activist', value: 'Value', macro: 'Macro', growth: 'Growth' };
 
 export function FundHoldings() {
@@ -20,7 +21,7 @@ export function FundHoldings() {
   return (
     <Panel id="p-funds" title="Fund holdings" src={f} span="c8"
       right={funds.length ? <select className="in" style={{ width: "auto", maxWidth: 220 }} value={fund?.cik} onChange={(e) => setPick(e.target.value)} aria-label="Fund">
-        {funds.map((x) => <option key={x.cik} value={x.cik}>{x.name}</option>)}</select> : undefined}
+        {funds.map((x) => <option key={x.cik} value={x.cik}>{x.name}{x.period < oldCut ? ` (last 13F ${x.period.slice(0, 4)})` : ''}</option>)}</select> : undefined}
       note="Each fund’s latest Form 13F from SEC EDGAR: US-listed stock positions at the quarter end, filed up to 45 days later, so holdings can have changed since. Options and short positions aren’t reported on 13F. Tickers come from the CUSIPs via OpenFIGI.">
       {fund && <>
         <div className="kpis">
@@ -48,8 +49,8 @@ export function FundHoldings() {
 /** Company page card: 5%+ holders from Schedules 13D/13G, plus the tracked funds that own it. */
 export function HoldersCard({ t, stakes }: { t: string; stakes: Stake[] | undefined }) {
   const f = useSource(FUNDS_SRC);
-  const funds = holdersOf(f.data, t);
-  const list = stakes ?? [];
+  const funds = holdersOf(f.data, t).filter((x) => x.fund.period >= oldCut);
+  const list = (stakes ?? []).filter((s) => s.pct !== 0);
   return (
     <Panel title="Major holders" src={f} span="c4" hasData
       note="5%+ holders from Schedules 13D (may seek to influence the company) and 13G (passive), as filed in the SEC’s XML format since December 2024; the percentage is of the share class on the filing date. Funds are the ones Parallax follows, from their latest 13F.">

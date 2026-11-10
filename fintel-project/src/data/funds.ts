@@ -83,6 +83,17 @@ export async function figiTickers(cusips: string[], gapMs = 2600): Promise<Recor
     batch.forEach((c, k) => { const d = res[k]?.data?.find((x) => x.marketSector === 'Equity') ?? res[k]?.data?.[0]; out[c] = d?.ticker ? d.ticker.replace(/\//g, '.') : null; });
     if (i + 10 < cusips.length) await new Promise((r) => setTimeout(r, gapMs));
   }
+  // foreign-incorporated companies listed in the US (Chubb, Medtronic…) have non-US CUSIPs: ask again without the exchange
+  const miss = cusips.filter((c) => !out[c]);
+  for (let i = 0; i < miss.length; i += 10) {
+    await new Promise((r) => setTimeout(r, gapMs));
+    const batch = miss.slice(i, i + 10);
+    const res = await getJSON<{ data?: { ticker: string; exchCode?: string; marketSector?: string }[] }[]>('https://api.openfigi.com/v3/mapping', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, timeout: 20000,
+      body: JSON.stringify(batch.map((c) => ({ idType: 'ID_CUSIP', idValue: c }))),
+    }).catch(() => []);
+    batch.forEach((c, k) => { const d = res[k]?.data?.find((x) => x.marketSector === 'Equity' && x.exchCode === 'US') ?? res[k]?.data?.find((x) => x.marketSector === 'Equity'); if (d?.ticker) out[c] = d.ticker.replace(/\//g, '.'); });
+  }
   return out;
 }
 

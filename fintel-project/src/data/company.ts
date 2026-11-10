@@ -167,7 +167,7 @@ export function parseStake(xml: string, issuerCik: string, filed: string, link: 
   if (!issuer || Number(issuer) !== Number(issuerCik)) return null;
   const persons = [...xblocks(xml, 'coverPageHeaderReportingPersonDetails'), ...xblocks(xml, 'reportingPersonInfo')];
   const first = persons[0] ?? xml;
-  const filer = tidyName(xv(first, 'reportingPersonName'));
+  const filer = tidyFiler(xv(first, 'reportingPersonName'));
   if (!filer) return null;
   // a group files one statement: the largest percentage among its members is the group's stake
   let pct: number | null = null, shares: number | null = null;
@@ -178,11 +178,18 @@ export function parseStake(xml: string, issuerCik: string, filed: string, link: 
   }
   return { filer, form: m[1] === 'D' ? '13D' : '13G', amended: !!m[2], filed, event: usDate(xv(xml, 'eventDateRequiresFilingThisStatement') || xv(xml, 'dateOfEvent')), pct, shares, link };
 }
-/** Latest statement per filer, biggest stakes first. */
+/** Filer names: people come as "BUFFETT WARREN E" (flip them); organisations and already-formatted names stay as filed. */
+const ORG = /\b(INC|LLC|L\.?L\.?C|LP|L\.P\.|CORP|CORPORATION|COMPANY|CO|FUND|TRUST|PARTNERS|CAPITAL|HOLDINGS?|MANAGEMENT|LTD|LIMITED|GROUP|PLC|N\.A\.|N\.V\.|S\.A\.|AG|SE|BANK|STICHTING|FOUNDATION|ASSOCIATES|ADVISORS|ADVISERS|INVESTMENTS?|SECURITIES|ENTERPRISES|VENTURES)\b/i;
+export function tidyFiler(raw: string): string {
+  const s = raw.replace(/\s+/g, ' ').trim();
+  if (!s || s !== s.toUpperCase() || s.includes(',') || ORG.test(s)) return s;
+  return tidyName(s);
+}
+/** Latest statement per filer, biggest stakes first; a filer whose latest says 0% (sold below 5%) drops out. */
 export function latestStakes(list: Stake[]): Stake[] {
   const by = new Map<string, Stake>();
   for (const s of list) { const k = s.filer.toLowerCase(), p = by.get(k); if (!p || s.filed > p.filed) by.set(k, s); }
-  return [...by.values()].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0));
+  return [...by.values()].filter((s) => s.pct !== 0).sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0));
 }
 
 // ------------------------------------------------------------------ build a company
@@ -258,14 +265,16 @@ const symKey = (t: string) => t.toUpperCase().replace(/[^A-Z0-9]/g, '');
 export function buildHolders(cos: CompanyData[], funds?: FundsData): NetHolder[] {
   const byKey = new Map(cos.map((c) => [symKey(c.ticker), c.ticker]));
   const out: NetHolder[] = [];
+  const cutoff = new Date(Date.now() - 270 * 864e5).toISOString().slice(0, 10); // a fund that stopped filing 13F isn't evidence of today's holdings
   for (const f of funds?.funds ?? []) {
+    if (f.period < cutoff) continue;
     const links = f.holdings.filter((h) => h.t && byKey.has(symKey(h.t))).map((h) => ({ ticker: byKey.get(symKey(h.t!))!, pct: h.pct }));
     const uniq = [...new Map(links.map((l) => [l.ticker, l])).values()];
     if (uniq.length) out.push({ id: 'f:' + f.cik, name: f.name, kind: 'fund', style: f.style, links: uniq });
   }
   const d = new Map<string, NetHolder>();
   for (const c of cos) for (const st of c.stakes ?? []) {
-    if (st.form !== '13D') continue;
+    if (st.form !== '13D' || st.pct === 0) continue;
     const id = 'd:' + st.filer.toLowerCase().replace(/[^a-z0-9]/g, '');
     const h = d.get(id) ?? { id, name: st.filer, kind: '13D' as const, links: [] };
     if (!h.links.some((l) => l.ticker === c.ticker)) h.links.push({ ticker: c.ticker, pct: st.pct });

@@ -253,7 +253,8 @@ export function seasonStats(rows: EarningsEvent[], large: Set<string>, from: str
   const big = uniq.filter((e) => large.has(key(e.symbol)));
   const wk = new Map<string, { n: number; beat: number }>();
   for (const e of big) { const w = weekOf(e.date), x = wk.get(w) ?? { n: 0, beat: 0 }; x.n++; if (e.epsAct! > e.epsEst!) x.beat++; wk.set(w, x); }
-  const bySurprise = big.filter((e) => surprisePct(e) != null).sort((a, b) => surprisePct(b)! - surprisePct(a)!);
+  // a tiny estimate (a few cents) turns any miss into ±1,000%: rank only estimates of 10¢ or more
+  const bySurprise = big.filter((e) => surprisePct(e) != null && Math.abs(e.epsEst!) >= 0.1).sort((a, b) => surprisePct(b)! - surprisePct(a)!);
   return {
     from, to, all: stat(uniq), large: stat(big), largeN: large.size,
     weeks: [...wk.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([w, x]) => ({ wk: w, ...x })),

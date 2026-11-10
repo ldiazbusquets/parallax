@@ -79,7 +79,7 @@ export function Shipping() {
   const d = s.data;
   const risk = useMemo(() => (d ? chokeRisk(d.points, (ev.data?.week ?? ev.data)?.points ?? [], hz.data?.items ?? []) : []), [d, ev.data, hz.data]);
   const riskBy = new Map(risk.map((r) => [r.id, r]));
-  const hot = (id: string) => { const r = riskBy.get(id); return !!r && (r.conflict >= 5 || r.hazards.length > 0); };
+  const hot = (id: string) => { const r = riskBy.get(id); return !!r && (r.conflict >= 3 || r.hazards.length > 0); };
   const rows = (d?.points ?? []).map((p) => {
     const ser = d!.daily[p.id], now = weekAvg(ser, d!.last), prev = weekAvg(ser, yearBefore(d!.last)), tank = weekAvg(ser, d!.last, 'tanker');
     return { p, now, yoy: now != null && prev ? (now / prev - 1) * 100 : null, tank: now && tank != null ? (tank / now) * 100 : null, spark: (ser ?? []).slice(-120).map((x) => x.total) };
@@ -100,8 +100,8 @@ export function Shipping() {
       note={tab === 'ports'
         ? `Port calls per day at the ${pd?.ports.length ?? 30} busiest ports, averaged over the 7 days to ${pd ? dateLabel(pd.last) : 'the latest report'}, with estimated cargo handled (imports + exports, metric tons), from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier.`
         : tab === 'risk'
-          ? 'Chokepoints with armed conflict, unrest or sanctions events within 500 km in the last 7 days (GDELT, widely reported events located to a city or region; country-wide reports are left out) or an orange/red natural-hazard alert nearby (USGS, GDACS, NASA EONET). Shown with the chokepoint’s traffic and the oil price. Proximity is not proof that shipping is affected.'
-          : `Ships passing each chokepoint per day, averaged over the 7 days to ${d ? dateLabel(d.last) : 'the latest report'}, from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier. A dot marks conflict or a hazard nearby (see Risk). Click a row to see it on the map.`}>
+          ? 'Chokepoints with fighting (assaults, armed clashes, mass violence), unrest or sanctions events within 300 km in the last 7 days (GDELT, widely reported events located to a city or region; country-wide reports, threats and troop movements are left out) or an orange/red natural-hazard alert nearby (USGS, GDACS, NASA EONET). Shown with the chokepoint’s traffic and the oil price. Proximity is not proof that shipping is affected.'
+          : `Ships passing each chokepoint per day, averaged over the 7 days to ${d ? dateLabel(d.last) : 'the latest report'}, from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier. A dot marks fighting or a hazard nearby (see Risk). Click a row to see it on the map.`}>
       {tab === 'choke' && <table className="t">
         <thead><tr><th>Chokepoint</th><th>Ships/day</th><th>YoY</th><th className="hs">Tankers</th><th>120d</th></tr></thead>
         <tbody>
@@ -136,7 +136,7 @@ export function Shipping() {
         {atRisk.length ? <ul className="feed" style={{ marginTop: 8 }}>{atRisk.map((r) => { const k = riskBy.get(r.p.id)!; return (
           <li key={r.p.id} className="click" onClick={() => focus(r.p.lat, r.p.lng)}>
             <span className="ttl"><b>{r.p.name.replace(/ Strait$/, '')}</b>
-              <small>{[k.conflict && `${k.conflict} conflict reports${k.places.length ? ' (' + k.places.join(', ') + ')' : ''}`, k.unrest && `${k.unrest} unrest`, k.sanctions && `${k.sanctions} sanctions`, ...k.hazards.map((h) => `${HAZARD_LABEL[h.kind]}: ${h.title}`)].filter(Boolean).join(' · ')}</small></span>
+              <small>{[k.conflict && `${k.conflict} fighting reports${k.places.length ? ' (' + k.places.join(', ') + ')' : ''}`, k.unrest && `${k.unrest} unrest`, k.sanctions && `${k.sanctions} sanctions`, ...k.hazards.map((h) => `${HAZARD_LABEL[h.kind]}: ${h.title}`)].filter(Boolean).join(' · ')}</small></span>
             <span className="mono" style={{ textAlign: 'right' }}>{r.now!.toFixed(0)}/day<br /><small>{isNum(r.yoy) ? <Chg v={r.yoy} dp={0} /> : ''}</small></span>
           </li>); })}</ul> : <div className="empty">{ev.data && hz.data ? 'Nothing flagged near a chokepoint this week.' : 'Loading events…'}</div>}
       </>}

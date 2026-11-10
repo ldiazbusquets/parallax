@@ -98,6 +98,7 @@ describe('trade flows', () => {
     const r = chokeRisk([bab], [ev('Aden, Adan, Yemen', 12.78, 45.04, 'conflict', 7), ev('Yemen', 15.5, 47.5, 'conflict', 40), ev('Cairo, Egypt', 30, 31.2, 'unrest', 3)],
       [{ id: 'h', kind: 'cyclone', title: 'TC X', detail: '', lat: 13, lng: 44, t: 0, level: 'orange', src: 'GDACS', url: '' }, { id: 'g', kind: 'quake', title: 'M5', detail: '', lat: 13, lng: 44, t: 0, level: null, src: 'USGS', url: '' }]);
     expect(r[0]).toMatchObject({ conflict: 7, unrest: 0, places: ['Aden'] });
+    expect(chokeRisk([bab], [{ ...ev('Aden, Adan, Yemen', 12.78, 45.04, 'conflict', 9), code: '138' }], [])[0].conflict).toBe(0);
     expect(r[0].hazards.map((h) => h.id)).toEqual(['h']);
   });
 });
