@@ -93,6 +93,8 @@ The app lives in `fintel-project/`. See its README for running it and the source
   lat/lon) and `Daily_Chokepoints_Data` (n_total, n_tanker…; 1,000 rows per page, page with resultOffset). Lanes:
   `public/data/shipping-lanes.json`, simplified from newzealandpaul/Shipping-Lanes (CC BY 4.0, keep the credit).
 - Installable: `public/manifest.webmanifest` + icons; `src/ui/install.ts` shows "Install app" on beforeinstallprompt.
+- Heatmap: squarified treemap (`src/ui/treemap.ts`, tested) of the largest US listings from the screener snapshot, sized by
+  market value, one box per company, grouped by Nasdaq sector; Top 100/200/500.
 - Layout (`src/ui/layout.tsx`): panel registry lives in App.tsx (`PANELS`); `WORKSPACES` (tabs: Overview, Markets,
   Macro & Rates, Geo, Companies) each have a default layout, rows summing to 12; edits are saved per tab (`#/w/<id>`).
 

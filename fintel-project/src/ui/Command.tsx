@@ -10,7 +10,7 @@ export const FUNCTIONS: Fn[] = [
   { code: 'SECT', name: 'US sectors', target: 'p-sectors', keywords: 'sector etf rotation' },
   { code: 'VOL', name: 'Volatility', target: 'p-vol', keywords: 'vix move skew' },
   { code: 'FXC', name: 'Currencies', target: 'p-fx', keywords: 'fx dollar forex' },
-  { code: 'IMAP', name: 'Large-cap heatmap', target: 'p-heatmap', keywords: 'heatmap movers' },
+  { code: 'IMAP', name: 'Market heatmap (sized by market value)', target: 'p-heatmap', keywords: 'heatmap treemap movers market cap sectors' },
   { code: 'CMDTY', name: 'Commodities', target: 'p-cmdty', keywords: 'oil gold copper' },
   { code: 'GP', name: 'Chart & watchlist', target: 'p-watch', keywords: 'chart graph price' },
   { code: 'CRYPTO', name: 'Crypto', target: 'p-crypto', keywords: 'bitcoin btc eth' },

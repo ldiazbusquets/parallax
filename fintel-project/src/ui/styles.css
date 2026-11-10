@@ -625,3 +625,16 @@ details.pnote > div { margin-top: 6px; max-width: 70ch; }
 
 /* logo: silver-blue bars (see App.tsx), silver wordmark */
 button.brand > span { background: linear-gradient(180deg, #f4f6f8 0%, #c9d1d8 55%, #9aa6b1 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* ---------- market heatmap (treemap) ---------- */
+.tm { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #0f0f0f; }
+.tm-s { position: absolute; box-shadow: inset 0 0 0 1px #0c0c0c; }
+.tm-h { position: absolute; left: 0; right: 0; top: 0; height: 18px; display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 0 6px; font: 400 11px var(--sans); color: var(--dim); background: #121212; overflow: hidden; white-space: nowrap; }
+.tm-h span { overflow: hidden; text-overflow: ellipsis; }
+.tm-h .up, .tm-h .down, .tm-h .chg { font-size: 11px; }
+.tm-t { position: absolute; border: 0; border-radius: 3px; padding: 0 2px; margin: 1px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: #f6f6f6; cursor: pointer; overflow: hidden; font-family: var(--sans); line-height: 1.05; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.tm-t b { font-weight: 600; letter-spacing: -.01em; }
+.tm-t span { font-family: var(--num, var(--sans)); font-weight: 300; opacity: .92; }
+.tm-t:hover, .tm-t:focus-visible { outline: 1.5px solid #ffffffcc; outline-offset: -1.5px; z-index: 2; }
+.hm-sum { font-size: 11px; white-space: nowrap; }
+@container (max-width: 560px) { .hm-sum { display: none; } }

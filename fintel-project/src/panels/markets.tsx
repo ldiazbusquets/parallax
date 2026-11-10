@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { chart, chartAsOf, spark, SNAP_FILES, useQuotes, type Bars, type Quote, isStaleQuote } from '@/data/yahoo';
 import { snapTime, STATIC } from '@/lib/env';
 import { sourceFor, useSource } from '@/data/store';
-import { COMMODITIES, DEFAULT_WATCHLIST, FX, HEATMAP, INDICES, SECTORS, TAPE, VOL } from '@/data/universe';
-import { isNum, num, pct, price } from '@/lib/format';
+import { COMMODITIES, DEFAULT_WATCHLIST, FX, INDICES, SECTORS, TAPE, VOL } from '@/data/universe';
+import { big, isNum, num, pct, price } from '@/lib/format';
 import { Chg, Panel, RangeBar, Spark, Tabs, Big } from '@/ui/kit';
 import { heat, T } from '@/ui/theme';
+import { squarify } from '@/ui/treemap';
+import { SCREENER } from '@/data/equity';
 import { PriceChart, useChartStyle } from '@/ui/charts';
 
 // ---------------------------------------------------------------- ticker tape
@@ -166,30 +168,69 @@ export function Currencies() {
 }
 
 // ---------------------------------------------------------------- heatmap
+// The largest US-listed companies as a treemap: each box is sized by market value and grouped by sector, so the
+// names that move the market look as big as they are. Data: the Nasdaq screener (every US listing, prices delayed).
+const SECTOR_NAME: Record<string, string> = { Technology: 'Technology', Finance: 'Financials', 'Health Care': 'Health care', 'Consumer Discretionary': 'Consumer discretionary', Industrials: 'Industrials', Telecommunications: 'Telecom', Energy: 'Energy', 'Real Estate': 'Real estate', Utilities: 'Utilities', 'Basic Materials': 'Materials', 'Consumer Staples': 'Consumer staples', Miscellaneous: 'Other' };
+interface HmStock { s: string; n: string; p: number; ch: number; mc: number }
+interface HmSector { id: string; name: string; mc: number; ch: number; items: HmStock[] }
 export function Heatmap({ onPick }: { onPick: (s: string) => void }) {
-  const syms = HEATMAP.flatMap((s) => s.items);
-  const q = useQuotes(syms);
-  const vals = syms.map((s) => q.data?.[s]?.changePct).filter(isNum);
-  const adv = vals.filter((v) => v > 0).length;
-  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  const sc = useSource(SCREENER);
+  const [top, setTop] = useState('200');
+  const box = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(0);
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    const ro = new ResizeObserver(() => setW(Math.floor(el.clientWidth)));
+    ro.observe(el); setW(Math.floor(el.clientWidth));
+    return () => ro.disconnect();
+  }, [!!sc.data]); // eslint-disable-line react-hooks/exhaustive-deps -- the box mounts once data arrives
+  const H = W && W < 600 ? 460 : 540;
+  const sectors = useMemo<HmSector[]>(() => {
+    const seen = new Set<string>(), pick: HmStock[] = [];
+    for (const r of [...(sc.data ?? [])].filter((r) => isNum(r.mc) && r.mc > 0 && r.sec && isNum(r.ch)).sort((a, b) => b.mc! - a.mc!)) {
+      const key = r.n.toLowerCase().replace(/[^a-z0-9]/g, ''); // one box per company (GOOGL/GOOG, share classes)
+      if (seen.has(key)) continue; seen.add(key);
+      pick.push({ s: r.s, n: r.n, p: r.p, ch: r.ch!, mc: r.mc! });
+      if (pick.length >= +top) break;
+    }
+    const by = new Map<string, HmSector>();
+    for (const x of pick) {
+      const id = (sc.data ?? []).find((r) => r.s === x.s)?.sec ?? 'Miscellaneous';
+      const g = by.get(id) ?? { id, name: SECTOR_NAME[id] ?? id, mc: 0, ch: 0, items: [] };
+      g.items.push(x); g.mc += x.mc; g.ch += x.ch * x.mc; by.set(id, g);
+    }
+    return [...by.values()].map((g) => ({ ...g, ch: g.ch / g.mc })).sort((a, b) => b.mc - a.mc);
+  }, [sc.data, top]);
+  const layout = useMemo(() => {
+    if (!W || !sectors.length) return [];
+    return squarify(sectors, (g) => g.mc, { x: 0, y: 0, w: W, h: H }).map((sr) => {
+      const head = sr.w > 70 && sr.h > 46 ? 18 : 0;
+      const inner = { x: sr.x + 1, y: sr.y + head + 1, w: sr.w - 2, h: sr.h - head - 2 };
+      return { ...sr, head, tiles: squarify(sr.item.items, (x) => x.mc, inner) };
+    });
+  }, [sectors, W, H]);
+  const all = sectors.flatMap((g) => g.items);
+  const totMc = all.reduce((a, x) => a + x.mc, 0);
+  const wAvg = totMc ? all.reduce((a, x) => a + x.ch * x.mc, 0) / totMc : null;
+  const adv = all.filter((x) => x.ch > 0).length;
   return (
-    <Panel id="p-heatmap" title="Large-cap heatmap" src={q} span="c8"
-      right={<span className="mono dim" style={{ fontSize: 11 }}>{vals.length ? <>{adv}/{vals.length} up · avg <Chg v={avg} /></> : null}</span>}
-      note="Daily change of 59 large US stocks, grouped by sector. Tiles are equal-sized (not market-cap weighted). Click a tile for the company page.">
-      <div className="hm">
-        {HEATMAP.map((g) => (
-          <div className="hm-s" key={g.sector} style={{ flexGrow: g.items.length }}>
-            <h3>{g.sector}</h3>
-            <div className="hm-g">
-              {g.items.map((s) => {
-                const x = q.data?.[s];
-                return (
-                  <div className="hm-t" key={s} style={{ background: heat(x?.changePct) }} onClick={() => onPick(s)} title={x ? `${x.name} · ${price(x.price)}` : s}>
-                    <b>{s}</b><span>{x ? pct(x.changePct, 2) : '—'}</span>
-                  </div>
-                );
-              })}
-            </div>
+    <Panel id="p-heatmap" title="Market heatmap" src={sc} span="c8" hasData={!!sc.data}
+      right={<div className="tabrow"><span className="mono dim hm-sum">{all.length ? <>{adv}/{all.length} up · weighted <Chg v={wAvg} /></> : null}</span><Tabs small value={top} onChange={setTop} options={[['100', 'Top 100'], ['200', 'Top 200'], ['500', 'Top 500']]} /></div>}
+      note="The largest US-listed companies by market value (one box per company), sized by market value and grouped by sector; colour is today’s change, from −3% (red) to +3% (green). Sector headers show the market-value-weighted change. Data: Nasdaq’s stock screener, prices delayed and as of the site’s last update. Hover for details; click a box to open the company.">
+      <div className="tm" ref={box} style={{ height: H }}>
+        {layout.map((sr) => (
+          <div key={sr.item.id} className="tm-s" style={{ left: sr.x, top: sr.y, width: sr.w, height: sr.h }}>
+            {sr.head ? <div className="tm-h" title={`${sr.item.name}: ${sr.item.items.length} companies, $${big(sr.item.mc, 1)}`}><span>{sr.item.name}</span><Chg v={sr.item.ch} /></div> : null}
+            {sr.tiles.map((t) => {
+              const w = t.w - 2, h = t.h - 2, size = Math.max(9, Math.min(26, Math.sqrt(w * h) / 4.2));
+              return (
+                <button key={t.item.s} className="tm-t" style={{ left: t.x - sr.x, top: t.y - sr.y, width: Math.max(0, w), height: Math.max(0, h), background: heat(t.item.ch) }}
+                  title={`${t.item.n} (${t.item.s})\n${price(t.item.p)} · ${pct(t.item.ch, 2)} · $${big(t.item.mc, 1)} market value`} onClick={() => onPick(t.item.s)}>
+                  {w > 30 && h > 18 ? <b style={{ fontSize: size }}>{t.item.s}</b> : null}
+                  {w > 38 && h > 34 ? <span style={{ fontSize: Math.max(9, size * 0.62) }}>{pct(t.item.ch, 2)}</span> : null}
+                </button>
+              );
+            })}
           </div>
         ))}
       </div>
