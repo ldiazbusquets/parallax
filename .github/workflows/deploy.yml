@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: fintel-project
@@ -52,6 +52,8 @@ jobs:
             fintel-project/public/snap/ecocal.json
             fintel-project/public/snap/yields.json
             fintel-project/public/snap/screener.json
+            fintel-project/public/snap/funds.json
+            fintel-project/public/snap/season.json
           key: companies-${{ steps.day.outputs.d }}-${{ github.run_id }}
           restore-keys: |
             companies-${{ steps.day.outputs.d }}-

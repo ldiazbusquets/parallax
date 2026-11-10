@@ -7,7 +7,7 @@ import { big, isNum, num, pct, price } from '@/lib/format';
 import { Chg, Panel, RangeBar, Spark, Tabs, Big } from '@/ui/kit';
 import { heat, T } from '@/ui/theme';
 import { squarify } from '@/ui/treemap';
-import { SCREENER } from '@/data/equity';
+import { SCREENER, SECTOR_FIX, topCompanies } from '@/data/equity';
 import { PriceChart, useChartStyle } from '@/ui/charts';
 
 // ---------------------------------------------------------------- ticker tape
@@ -172,9 +172,6 @@ export function Currencies() {
 // names that move the market look as big as they are. Data: the Nasdaq screener (every US listing, prices delayed).
 const SECTOR_NAME: Record<string, string> = { Technology: 'Technology', Finance: 'Financials', 'Health Care': 'Health care', 'Consumer Discretionary': 'Consumer discretionary', Industrials: 'Industrials', Telecommunications: 'Telecom', Energy: 'Energy', 'Real Estate': 'Real estate', Utilities: 'Utilities', 'Basic Materials': 'Materials', 'Consumer Staples': 'Consumer staples', Miscellaneous: 'Other' };
 // Listings that aren't a company's common stock (preferreds, notes, depositary units) carry the parent's market value.
-const NOT_COMMON = /depositary shares? represent|preferred|\bnotes?\b|debentures?|%|warrants?|\bunits?\b|\brights\b/i;
-// Nasdaq leaves a few large companies without a sector
-const SECTOR_FIX: Record<string, string> = { 'BRK/A': 'Finance', 'BRK/B': 'Finance' };
 interface HmStock { s: string; n: string; p: number; ch: number; mc: number }
 interface HmSector { id: string; name: string; mc: number; ch: number; items: HmStock[] }
 export function Heatmap({ onPick }: { onPick: (s: string) => void }) {
@@ -190,14 +187,8 @@ export function Heatmap({ onPick }: { onPick: (s: string) => void }) {
   }, [!!sc.data]); // eslint-disable-line react-hooks/exhaustive-deps -- the box mounts once data arrives
   const H = W && W < 600 ? 460 : 540;
   const sectors = useMemo<HmSector[]>(() => {
-    const seen = new Set<string>(), pick: HmStock[] = [];
-    for (const r of [...(sc.data ?? [])].filter((r) => isNum(r.mc) && r.mc > 0 && isNum(r.ch) && !NOT_COMMON.test(r.n)).sort((a, b) => b.mc! - a.mc!)) {
-      // one box per company: share classes (GOOGL/GOOG, BRK/A–B) carry the whole company's market value
-      const key = r.n.replace(/\s+(class [a-z]\b|capital stock|common stock|ordinary shares).*$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (seen.has(key)) continue; seen.add(key);
-      pick.push({ s: r.s, n: r.n, p: r.p, ch: r.ch!, mc: r.mc! });
-      if (pick.length >= +top) break;
-    }
+    const pick: HmStock[] = [];
+    for (const r of topCompanies(sc.data ?? [], +top, true)) pick.push({ s: r.s, n: r.n, p: r.p, ch: r.ch!, mc: r.mc! });
     const by = new Map<string, HmSector>();
     for (const x of pick) {
       const id = (sc.data ?? []).find((r) => r.s === x.s)?.sec || SECTOR_FIX[x.s] || 'Miscellaneous';

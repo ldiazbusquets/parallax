@@ -1,6 +1,7 @@
 import { getJSON, getText, pool } from '@/lib/http';
 import { HOST, NODE, snap, snapTime, STATIC } from '@/lib/env';
 import { sourceFor, type SourceDef } from './store';
+import type { FundsData } from './funds';
 
 // Company profiles from SEC EDGAR: submissions (profile + filings), XBRL company facts (financials) and
 // Form 4 filings (insider transactions). All primary-source, no keys.
@@ -17,6 +18,8 @@ export interface InsiderTx {
 }
 export interface FilingRef { form: string; date: string; desc: string; items: string; link: string }
 export interface Person { cik: string; name: string; role: string; isDirector: boolean; isOfficer: boolean; tenPct: boolean }
+/** A 5%+ holder's Schedule 13D (activist / control intent) or 13G (passive) filing about this company. */
+export interface Stake { filer: string; form: '13D' | '13G'; amended: boolean; filed: string; event: string; pct: number | null; shares: number | null; link: string }
 export interface CompanyData {
   ticker: string; cik: string; name: string; sic: string; industry: string; exchange: string; fiscalYearEnd: string;
   state: string; website: string; description: string;
@@ -25,6 +28,7 @@ export interface CompanyData {
   insiders: InsiderTx[];
   people: Person[];
   filings: FilingRef[];
+  stakes?: Stake[];
   generated: number;
 }
 
@@ -36,7 +40,7 @@ export function lookupTicker(t: string) {
     for (const r of Object.values(j)) m[r.ticker.toUpperCase()] = { cik: String(r.cik_str).padStart(10, '0'), title: r.title };
     return m;
   }).catch((e) => { tickerMap = null; throw e; });
-  return tickerMap.then((m) => m[t.toUpperCase()] ?? m[t.toUpperCase().replace('-', '.')] ?? m[t.toUpperCase().replace('.', '-')]);
+  return tickerMap.then((m) => m[t.toUpperCase()] ?? m[t.toUpperCase().replace(/[/.]/, '-')] ?? m[t.toUpperCase().replace(/[/-]/, '.')]);
 }
 
 // ------------------------------------------------------------------ financials
@@ -149,6 +153,38 @@ export function tidyName(raw: string): string {
   return [...parts.slice(1), parts[0]].map((w) => w.split('-').map(cap).join('-')).join(' ');
 }
 
+// ------------------------------------------------------------------ Schedules 13D / 13G (XML since Dec 2024)
+/** Tag lookups that ignore the namespace prefix (13G files use sch:, 13D files a default namespace). */
+const xv = (x: string, tag: string) => x.match(new RegExp(`<(?:\\w+:)?${tag}>\\s*([^<]*)<`, 'i'))?.[1].trim() ?? '';
+const xblocks = (x: string, tag: string) => x.match(new RegExp(`<(?:\\w+:)?${tag}>[\\s\\S]*?</(?:\\w+:)?${tag}>`, 'gi')) ?? [];
+const usDate = (d: string) => { const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? `${m[3]}-${m[1]}-${m[2]}` : d; };
+/** Parse one 13D/13G primary_doc.xml. Returns null when it's about another issuer (the company may be the filer). */
+export function parseStake(xml: string, issuerCik: string, filed: string, link: string): Stake | null {
+  const type = xv(xml, 'submissionType').toUpperCase();
+  const m = type.match(/13([DG])(\/A)?/);
+  if (!m) return null;
+  const issuer = xv(xml, 'issuerCik') || xv(xml, 'issuerCIK');
+  if (!issuer || Number(issuer) !== Number(issuerCik)) return null;
+  const persons = [...xblocks(xml, 'coverPageHeaderReportingPersonDetails'), ...xblocks(xml, 'reportingPersonInfo')];
+  const first = persons[0] ?? xml;
+  const filer = tidyName(xv(first, 'reportingPersonName'));
+  if (!filer) return null;
+  // a group files one statement: the largest percentage among its members is the group's stake
+  let pct: number | null = null, shares: number | null = null;
+  for (const p of persons.length ? persons : [xml]) {
+    const pc = p.match(/<(?:\w+:)?(?:classPercent|percentOfClass|percentOfClassRepresented)>\s*([\d.]+)/i), sh = p.match(/<(?:\w+:)?(?:aggregateAmountOwned|reportingPersonBeneficiallyOwnedAggregateNumberOfShares)>\s*([\d.]+)/i);
+    if (pc && (pct == null || +pc[1] > pct)) { pct = +pc[1]; shares = sh ? +sh[1] : shares; }
+    else if (sh && shares == null) shares = +sh[1];
+  }
+  return { filer, form: m[1] === 'D' ? '13D' : '13G', amended: !!m[2], filed, event: usDate(xv(xml, 'eventDateRequiresFilingThisStatement') || xv(xml, 'dateOfEvent')), pct, shares, link };
+}
+/** Latest statement per filer, biggest stakes first. */
+export function latestStakes(list: Stake[]): Stake[] {
+  const by = new Map<string, Stake>();
+  for (const s of list) { const k = s.filer.toLowerCase(), p = by.get(k); if (!p || s.filed > p.filed) by.set(k, s); }
+  return [...by.values()].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0));
+}
+
 // ------------------------------------------------------------------ build a company
 interface Submissions {
   cik: string; name: string; sic: string; sicDescription: string; tickers: string[]; exchanges: string[]; fiscalYearEnd: string;
@@ -157,7 +193,7 @@ interface Submissions {
 }
 const archive = (cik: string, acc: string, doc: string) => `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${acc.replace(/-/g, '')}/${doc}`;
 
-export async function buildCompany(ticker: string, form4Limit = 20): Promise<CompanyData> {
+export async function buildCompany(ticker: string, form4Limit = 20, stakeLimit = 10): Promise<CompanyData> {
   const hit = await lookupTicker(ticker);
   if (!hit) throw new Error(`${ticker} isn't an SEC-registered company (ETFs and foreign listings may not be)`);
   const [sub, facts] = await Promise.all([
@@ -165,9 +201,16 @@ export async function buildCompany(ticker: string, form4Limit = 20): Promise<Com
     getJSON<FactsDoc>(`${HOST.secdata}/api/xbrl/companyfacts/CIK${hit.cik}.json`).catch(() => null),
   ]);
   const r = sub.filings.recent;
-  const filings: FilingRef[] = [], f4: { url: string; link: string }[] = [];
+  const filings: FilingRef[] = [], f4: { url: string; link: string }[] = [], sch: { url: string; link: string; filed: string }[] = [];
   for (let i = 0; i < r.form.length; i++) {
     const form = r.form[i];
+    if (/^SCHEDULE 13[DG](\/A)?$/.test(form)) {
+      if (sch.length < stakeLimit) {
+        const doc = r.primaryDocument[i], dir = r.accessionNumber[i].replace(/-/g, '');
+        sch.push({ url: `${HOST.sec}/Archives/edgar/data/${Number(hit.cik)}/${dir}/${doc.replace(/^xsl[^/]+\//, '')}`, link: archive(hit.cik, r.accessionNumber[i], doc), filed: r.filingDate[i] });
+      }
+      continue;
+    }
     if (form === '4') {
       if (f4.length < form4Limit) {
         const doc = r.primaryDocument[i];
@@ -178,6 +221,8 @@ export async function buildCompany(ticker: string, form4Limit = 20): Promise<Com
     }
   }
   const parsed = await pool(f4, NODE ? 2 : 3, async (x) => parseForm4(await getText(x.url), x.link));
+  const stakeRows: (Stake | null | undefined)[] = await pool(sch, NODE ? 2 : 3, async (x) => parseStake(await getText(x.url), hit.cik, x.filed, x.link)).catch(() => []);
+  const stakes = latestStakes(stakeRows.filter((x): x is Stake => !!x));
   const insiders: InsiderTx[] = [], peopleMap = new Map<string, Person>();
   for (const p of parsed) {
     if (!p) continue;
@@ -190,7 +235,7 @@ export async function buildCompany(ticker: string, form4Limit = 20): Promise<Com
     ticker: ticker.toUpperCase(), cik: hit.cik, name: sub.name, sic: sub.sic, industry: sub.sicDescription,
     exchange: sub.exchanges?.[0] ?? '', fiscalYearEnd: sub.fiscalYearEnd, state: sub.stateOfIncorporation,
     website: sub.website, description: sub.description, ...fin,
-    insiders: insiders.slice(0, 60), people: [...peopleMap.values()], filings, generated: Date.now(),
+    insiders: insiders.slice(0, 60), people: [...peopleMap.values()], filings, stakes, generated: Date.now(),
   };
 }
 
@@ -206,8 +251,29 @@ export function companySource(ticker: string): SourceDef<CompanyData> {
 
 // ------------------------------------------------------------------ network
 export interface NetPerson { cik: string; name: string; links: { ticker: string; role: string }[] }
-export interface Network { companies: { ticker: string; name: string; industry: string; people: number }[]; people: NetPerson[]; generated: number }
-export function buildNetwork(cos: CompanyData[]): Network {
+/** A fund (13F: `pct` = share of the fund's portfolio) or a 13D filer (`pct` = share of the company it owns). */
+export interface NetHolder { id: string; name: string; kind: 'fund' | '13D'; style?: string; links: { ticker: string; pct: number | null }[] }
+export interface Network { companies: { ticker: string; name: string; industry: string; people: number }[]; people: NetPerson[]; holders?: NetHolder[]; generated: number }
+const symKey = (t: string) => t.toUpperCase().replace(/[^A-Z0-9]/g, '');
+export function buildHolders(cos: CompanyData[], funds?: FundsData): NetHolder[] {
+  const byKey = new Map(cos.map((c) => [symKey(c.ticker), c.ticker]));
+  const out: NetHolder[] = [];
+  for (const f of funds?.funds ?? []) {
+    const links = f.holdings.filter((h) => h.t && byKey.has(symKey(h.t))).map((h) => ({ ticker: byKey.get(symKey(h.t!))!, pct: h.pct }));
+    const uniq = [...new Map(links.map((l) => [l.ticker, l])).values()];
+    if (uniq.length) out.push({ id: 'f:' + f.cik, name: f.name, kind: 'fund', style: f.style, links: uniq });
+  }
+  const d = new Map<string, NetHolder>();
+  for (const c of cos) for (const st of c.stakes ?? []) {
+    if (st.form !== '13D') continue;
+    const id = 'd:' + st.filer.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const h = d.get(id) ?? { id, name: st.filer, kind: '13D' as const, links: [] };
+    if (!h.links.some((l) => l.ticker === c.ticker)) h.links.push({ ticker: c.ticker, pct: st.pct });
+    d.set(id, h);
+  }
+  return [...out, ...d.values()];
+}
+export function buildNetwork(cos: CompanyData[], funds?: FundsData): Network {
   const people = new Map<string, NetPerson>();
   for (const c of cos) for (const p of c.people) {
     const e = people.get(p.cik) ?? { cik: p.cik, name: p.name, links: [] };
@@ -217,6 +283,7 @@ export function buildNetwork(cos: CompanyData[]): Network {
   return {
     companies: cos.map((c) => ({ ticker: c.ticker, name: c.name, industry: c.industry, people: c.people.length })),
     people: [...people.values()].sort((a, b) => b.links.length - a.links.length || a.name.localeCompare(b.name)),
+    holders: buildHolders(cos, funds),
     generated: Date.now(),
   };
 }

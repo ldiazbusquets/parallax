@@ -643,3 +643,9 @@ button.brand > span { background: linear-gradient(180deg, #f4f6f8 0%, #c9d1d8 55
 .mappanel details.pnote[open] > div { position: absolute; left: 16px; bottom: 40px; z-index: 6; max-width: min(560px, calc(100% - 32px)); margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--glass); -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%); border: 1px solid rgba(255,255,255,.08); color: var(--dim); }
 /* the morning brief scrolls inside its card so it doesn't stretch the headlines next to it */
 #p-brief .pb { max-height: 640px; overflow: auto; }
+
+/* Phase 4: holders, funds, season */
+.sub { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 4px 0 6px; }
+.wbar { display: inline-block; width: 46px; height: 5px; border-radius: 3px; background: var(--line); margin-right: 8px; vertical-align: middle; overflow: hidden; }
+.wbar > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.riskdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 6px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(124,169,212,.18); }

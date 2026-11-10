@@ -13,6 +13,7 @@ import { bondId, policyArea, COUNTRIES, type Country } from '@/data/universe';
 import { HAZARDS, HAZARD_COLOR, HAZARD_LABEL, type Hazard } from '@/data/hazards';
 import { pickWindow, useEventWindow } from '@/ui/evwindow';
 import { LANES_URL, SHIPPING, weekAvg, yearBefore, type ShippingData } from '@/data/shipping';
+import { CARGO, CARGO_HUBS, PORTS, portWeek, type CargoData, type PortsData } from '@/data/trade';
 import { FRED_MACRO } from '@/data/fred';
 import { big, num, price } from '@/lib/format';
 import { Chg, Panel, Tabs } from '@/ui/kit';
@@ -128,7 +129,26 @@ function chokeGeo(d: ShippingData | undefined): FeatureCollection {
     return { type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { name: p.name, now: now ?? 0, yoy: now != null && prev ? (now / prev - 1) * 100 : null, last: d.last, ind: p.topIndustries.slice(0, 2).join(', ') } };
   }) };
 }
-interface Overlays { events: FeatureCollection; showEv: boolean; hazards: FeatureCollection; showHz: boolean; lanes: FeatureCollection; choke: FeatureCollection; showShip: boolean }
+/** Busiest ports: small squares sized by last week's port calls. */
+function portsGeo(d: PortsData | undefined): FeatureCollection {
+  if (!d) return EMPTY;
+  return { type: 'FeatureCollection', features: d.ports.map((p) => {
+    const s = d.daily[p.id], now = portWeek(s, d.last), prev = portWeek(s, yearBefore(d.last)), trade = (portWeek(s, d.last, 'imp') ?? 0) + (portWeek(s, d.last, 'exp') ?? 0);
+    return { type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { name: `${p.name}, ${p.country}`, now: now ?? 0, yoy: now != null && prev ? (now / prev - 1) * 100 : null, trade, last: d.last } };
+  }) };
+}
+function cargoGeo(d: CargoData | undefined): FeatureCollection {
+  if (!d) return EMPTY;
+  return { type: 'FeatureCollection', features: d.planes.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { cs: p.cs, op: p.op, type: p.type, alt: p.alt ?? -1, ground: p.ground, track: p.track ?? 0, hub: p.hub, at: d.at } })) };
+}
+/** A small arrow, drawn once and tinted by the layer (SDF), pointing along the aircraft's track. */
+function planeIcon(): ImageData {
+  const n = 24, c = document.createElement('canvas'); c.width = c.height = n;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#fff'; g.beginPath(); g.moveTo(12, 2); g.lineTo(20, 21); g.lineTo(12, 16.5); g.lineTo(4, 21); g.closePath(); g.fill();
+  return g.getImageData(0, 0, n, n);
+}
+interface Overlays { events: FeatureCollection; showEv: boolean; hazards: FeatureCollection; showHz: boolean; lanes: FeatureCollection; choke: FeatureCollection; showShip: boolean; ports: FeatureCollection; cargo: FeatureCollection; showCargo: boolean }
 const vis = (on: boolean) => (on ? 'visible' : 'none') as 'visible' | 'none';
 function addOverlayLayers(m: maplibregl.Map, o: Overlays) {
   if (!styleReady(m) || m.getSource('hazards')) return;
@@ -139,6 +159,11 @@ function addOverlayLayers(m: maplibregl.Map, o: Overlays) {
   const cr: maplibregl.ExpressionSpecification = ['interpolate', ['linear'], ['get', 'now'], 0, 4, 50, 7, 150, 11, 300, 15];
   m.addLayer({ id: 'choke-glow', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#9fc3ff', 'circle-radius': ['*', cr, 1.9], 'circle-opacity': 0.12, 'circle-blur': 1 } }, before);
   m.addLayer({ id: 'choke', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#0c0c0c', 'circle-opacity': 0.55, 'circle-radius': cr, 'circle-stroke-color': '#cfe0ff', 'circle-stroke-width': 1.6 } });
+  m.addSource('ports', { type: 'geojson', data: o.ports });
+  m.addLayer({ id: 'ports', type: 'circle', source: 'ports', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#cfe0ff', 'circle-opacity': 0.8, 'circle-radius': ['interpolate', ['linear'], ['get', 'now'], 0, 2.5, 60, 4, 140, 6], 'circle-stroke-color': '#0c0c0c', 'circle-stroke-width': 1 } });
+  if (!m.hasImage('plane')) m.addImage('plane', planeIcon(), { sdf: true });
+  m.addSource('cargo', { type: 'geojson', data: o.cargo });
+  m.addLayer({ id: 'cargo', type: 'symbol', source: 'cargo', layout: { visibility: vis(o.showCargo), 'icon-image': 'plane', 'icon-size': ['case', ['get', 'ground'], 0.42, 0.6], 'icon-rotate': ['get', 'track'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true }, paint: { 'icon-color': '#f1f1f1', 'icon-opacity': ['case', ['get', 'ground'], 0.55, 0.95], 'icon-halo-color': '#0c0c0c', 'icon-halo-width': 1 } });
   m.addSource('hazards', { type: 'geojson', data: o.hazards });
   const hr: maplibregl.ExpressionSpecification = ['match', ['get', 'level'], 'red', 11, 'orange', 8, 6];
   m.addLayer({ id: 'hazards-glow', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-radius': ['*', hr, 2.4], 'circle-opacity': ['match', ['get', 'level'], 'red', 0.22, 0.12], 'circle-blur': 1 } });
@@ -188,8 +213,11 @@ export function WorldMap() {
   const ship = useSource(SHIPPING);
   const [showShip, setShowShip] = useState(true);
   const [showHz, setShowHz] = useState(true);
+  const ports = useSource(PORTS);
+  const cargo = useSource(CARGO);
+  const [showCargo, setShowCargo] = useState(false);
   const lanesRef = useRef<FeatureCollection>(EMPTY);
-  const ovRef = useRef<Overlays>({ events: EMPTY, showEv: true, hazards: EMPTY, showHz: true, lanes: EMPTY, choke: EMPTY, showShip: true });
+  const ovRef = useRef<Overlays>({ events: EMPTY, showEv: true, hazards: EMPTY, showHz: true, lanes: EMPTY, choke: EMPTY, showShip: true, ports: EMPTY, cargo: EMPTY, showCargo: false });
   const [mapErr, setMapErr] = useState('');
   const shapesRef = useRef<Map<string, Feature> | null>(null);
   const selRef = useRef<Country | null>(sel);
@@ -221,7 +249,19 @@ export function WorldMap() {
       const yoy = p.yoy == null || p.yoy === 'null' ? null : Number(p.yoy);
       popup(m, e.lngLat, p.name, [`${Number(p.now).toFixed(0)} ships a day (7 days to ${new Date(p.last + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})${yoy != null ? ` · ${yoy >= 0 ? '+' : ''}${yoy.toFixed(0)}% vs a year ago` : ''}`, p.ind ? 'Main cargo: ' + p.ind : ''], { url: 'https://portwatch.imf.org/', text: 'IMF PortWatch ↗' });
     });
-    for (const id of ['hazards', 'choke']) { m.on('mouseenter', id, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', id, () => { m.getCanvas().style.cursor = ''; }); }
+    m.on('click', 'ports', (e) => {
+      const p = e.features?.[0]?.properties as { name: string; now: number; yoy: number | null | string; trade: number; last: string } | undefined;
+      if (!p) return;
+      const yoy = p.yoy == null || p.yoy === 'null' ? null : Number(p.yoy);
+      popup(m, e.lngLat, p.name, [`${Number(p.now).toFixed(0)} port calls a day (7 days to ${new Date(p.last + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})${yoy != null ? ` · ${yoy >= 0 ? '+' : ''}${yoy.toFixed(0)}% vs a year ago` : ''}`, Number(p.trade) ? `About ${Math.round(Number(p.trade) / 1000).toLocaleString('en-US')} thousand tonnes of cargo a day (estimated)` : ''], { url: 'https://portwatch.imf.org/', text: 'IMF PortWatch ↗' });
+    });
+    m.on('click', 'cargo', (e) => {
+      const p = e.features?.[0]?.properties as { cs: string; op: string; type: string; alt: number; ground: boolean | string; hub: string; at: number } | undefined;
+      if (!p) return;
+      const ground = p.ground === true || p.ground === 'true', hub = CARGO_HUBS.find((h) => h.code === p.hub);
+      popup(m, e.lngLat, `${p.cs} · ${p.op}`, [`${p.type ? p.type + ' · ' : ''}${ground ? 'on the ground' : Number(p.alt) >= 0 ? Number(p.alt).toLocaleString('en-US') + ' ft' : 'airborne'} · near ${hub?.name ?? p.hub}`, `Position at ${new Date(Number(p.at)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`], { url: `https://globe.adsb.lol/?callsign=${encodeURIComponent(p.cs)}`, text: 'adsb.lol ↗' });
+    });
+    for (const id of ['hazards', 'choke', 'ports', 'cargo']) { m.on('mouseenter', id, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', id, () => { m.getCanvas().style.cursor = ''; }); }
     m.on('click', 'events', (e) => {
       const p = e.features?.[0]?.properties as { cat: EventCat; n: number; m: number; place: string; code: string; url: string } | undefined;
       if (!p) return;
@@ -235,7 +275,7 @@ export function WorldMap() {
     });
     m.on('mouseenter', 'events', () => { m.getCanvas().style.cursor = 'pointer'; });
     m.on('mouseleave', 'events', () => { m.getCanvas().style.cursor = ''; });
-    m.on('click', 'tracked-hit', (e) => { const top = ['events', 'hazards', 'choke'].filter((l) => m.getLayer(l)); if (top.length && m.queryRenderedFeatures(e.point, { layers: top }).length) return; const iso = e.features?.[0]?.properties?.iso3 as string | undefined; const c = COUNTRIES.find((x) => x.iso3 === iso); if (c) setSel(c); });
+    m.on('click', 'tracked-hit', (e) => { const top = ['events', 'hazards', 'choke', 'ports', 'cargo'].filter((l) => m.getLayer(l)); if (top.length && m.queryRenderedFeatures(e.point, { layers: top }).length) return; const iso = e.features?.[0]?.properties?.iso3 as string | undefined; const c = COUNTRIES.find((x) => x.iso3 === iso); if (c) setSel(c); });
     m.on('mouseenter', 'tracked-hit', () => { m.getCanvas().style.cursor = 'pointer'; });
     m.on('mouseleave', 'tracked-hit', () => { m.getCanvas().style.cursor = ''; });
     m.on('error', (e) => { if (String(e.error?.message || '').match(/style|Failed to fetch/i)) setMapErr('Map tiles could not load.'); });
@@ -306,13 +346,16 @@ export function WorldMap() {
   }, [showShip]);
   // hazards and chokepoints: data and visibility
   useEffect(() => {
-    ovRef.current = { ...ovRef.current, hazards: hazardsGeo(hz.data?.items), showHz, choke: chokeGeo(ship.data), showShip, lanes: lanesRef.current };
+    ovRef.current = { ...ovRef.current, hazards: hazardsGeo(hz.data?.items), showHz, choke: chokeGeo(ship.data), showShip, lanes: lanesRef.current, ports: portsGeo(ports.data), cargo: cargoGeo(cargo.data), showCargo };
     const m = map.current; if (!m) return;
     (m.getSource('hazards') as maplibregl.GeoJSONSource | undefined)?.setData(ovRef.current.hazards);
     (m.getSource('choke') as maplibregl.GeoJSONSource | undefined)?.setData(ovRef.current.choke);
+    (m.getSource('ports') as maplibregl.GeoJSONSource | undefined)?.setData(ovRef.current.ports);
+    (m.getSource('cargo') as maplibregl.GeoJSONSource | undefined)?.setData(ovRef.current.cargo);
     for (const id of ['hazards', 'hazards-glow']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showHz));
-    for (const id of ['lanes', 'choke', 'choke-glow']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showShip));
-  }, [hz.data, ship.data, showHz, showShip]);
+    for (const id of ['lanes', 'choke', 'choke-glow', 'ports']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showShip));
+    if (m.getLayer('cargo')) m.setLayoutProperty('cargo', 'visibility', vis(showCargo));
+  }, [hz.data, ship.data, ports.data, cargo.data, showHz, showShip, showCargo]);
 
   const iq = sel?.index ? q.data?.[sel.index[0]] : undefined;
   const fq = sel?.fx ? q.data?.[sel.fx[0]] : undefined;
@@ -322,13 +365,14 @@ export function WorldMap() {
   const pr = sel ? pol.data?.[policyArea(sel) ?? ''] : undefined;
   const bondPrev = bs && bs.length > 12 ? bs[bs.length - 13] : undefined;
   return (
-    <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev, hz, ship]} span="c8 mappanel" hasData
-      note={<>Country dots: today’s move in the main stock index (Yahoo Finance). Events: war, strikes and sanctions machine-coded from news by the GDELT Project, last 24 hours or 7 days; natural hazards from USGS, GDACS and NASA EONET, last 14 days. Shipping: chokepoint traffic from IMF PortWatch; lanes © P. Benden (CC BY 4.0), from the CIA World Oceans map. Country card: BIS, FRED/OECD, IMF and World Bank. Imagery © Esri.</>}>
+    <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev, hz, ship, ports, ...(showCargo ? [cargo] : [])]} span="c8 mappanel" hasData
+      note={<>Country dots: today’s move in the main stock index (Yahoo Finance). Events: war, strikes and sanctions machine-coded from news by the GDELT Project, last 24 hours or 7 days; natural hazards from USGS, GDACS and NASA EONET, last 14 days. Shipping: chokepoint and port traffic (the 30 busiest ports) from IMF PortWatch; lanes © P. Benden (CC BY 4.0), from the CIA World Oceans map. Cargo flights: all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL and others) within about 150 nautical miles of 16 air-freight hubs, from the adsb.lol community ADS-B feed; on the website this is a snapshot, with its time in the popup. Country card: BIS, FRED/OECD, IMF and World Bank. Imagery © Esri.</>}>
       <div className="mapwrap">
         <div ref={box} className="mapcanvas" />
         {mapErr && <div className="maperr" role="status">{mapErr}</div>}
         <div className="maplayers">
-          <button className="btn" onClick={() => setShowShip((v) => !v)} aria-pressed={showShip} title="Shipping lanes and chokepoint traffic (IMF PortWatch)">Shipping</button>
+          <button className="btn" onClick={() => setShowShip((v) => !v)} aria-pressed={showShip} title="Shipping lanes, chokepoint and port traffic (IMF PortWatch)">Shipping</button>
+          <button className="btn" onClick={() => setShowCargo((v) => !v)} aria-pressed={showCargo} title="Cargo airline flights near the big air-freight hubs (adsb.lol)">Cargo flights{showCargo && cargo.data ? ` · ${cargo.data.planes.length}` : ''}</button>
           <button className="btn" onClick={() => { const on = !(showEv || showHz); setShowEv(on); setShowHz(on); }} aria-pressed={showEv || showHz} title="Market-moving events: war, unrest, sanctions (GDELT, 24h) and natural hazards (USGS, GDACS, NASA)">Events</button>
         </div>
         {(showEv || showHz) && <div className="evlegend" role="group" aria-label="Event types">

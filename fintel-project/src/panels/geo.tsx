@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { EVENT_CATS, EVENTS, FIPS, vsNormal, type EventCat } from '@/data/events';
 import { pickWindow, useEventWindow } from '@/ui/evwindow';
 import { useSource } from '@/data/store';
 import { Chg, Panel, Spark, Tabs, useNow, Big } from '@/ui/kit';
-import { ago, dateLabel, isNum } from '@/lib/format';
+import { ago, big, dateLabel, isNum } from '@/lib/format';
 import { HAZARDS, HAZARD_COLOR, HAZARD_LABEL } from '@/data/hazards';
 import { SHIPPING, weekAvg, yearBefore } from '@/data/shipping';
+import { CARGO, CARGO_HUBS, chokeRisk, PORTS, portWeek } from '@/data/trade';
+import { useQuotes } from '@/data/yahoo';
 import { T } from '@/ui/theme';
 import { host, tidyActor } from '@/map/WorldMap';
 
@@ -66,24 +68,46 @@ export function WorldEvents() {
 }
 
 // ---------------------------------------------------------------- shipping chokepoints (IMF PortWatch)
+type ShipTab = 'choke' | 'ports' | 'risk';
 export function Shipping() {
   const s = useSource(SHIPPING);
-  const [by, setBy] = useState<'now' | 'yoy'>('now');
+  const pw = useSource(PORTS);
+  const ev = useSource(EVENTS);
+  const hz = useSource(HAZARDS);
+  const oil = useQuotes(['BZ=F', 'CL=F']);
+  const [tab, setTab] = useState<ShipTab>('choke');
   const d = s.data;
+  const risk = useMemo(() => (d ? chokeRisk(d.points, (ev.data?.week ?? ev.data)?.points ?? [], hz.data?.items ?? []) : []), [d, ev.data, hz.data]);
+  const riskBy = new Map(risk.map((r) => [r.id, r]));
+  const hot = (id: string) => { const r = riskBy.get(id); return !!r && (r.conflict >= 5 || r.hazards.length > 0); };
   const rows = (d?.points ?? []).map((p) => {
     const ser = d!.daily[p.id], now = weekAvg(ser, d!.last), prev = weekAvg(ser, yearBefore(d!.last)), tank = weekAvg(ser, d!.last, 'tanker');
     return { p, now, yoy: now != null && prev ? (now / prev - 1) * 100 : null, tank: now && tank != null ? (tank / now) * 100 : null, spark: (ser ?? []).slice(-120).map((x) => x.total) };
-  }).filter((r) => r.now != null).sort((a, b) => (by === 'now' ? b.now! - a.now! : (a.yoy ?? 1e9) - (b.yoy ?? 1e9)));
+  }).filter((r) => r.now != null).sort((a, b) => b.now! - a.now!);
+  const pd = pw.data;
+  const ports = (pd?.ports ?? []).map((p) => {
+    const ser = pd!.daily[p.id], now = portWeek(ser, pd!.last), prev = portWeek(ser, yearBefore(pd!.last));
+    const trade = (portWeek(ser, pd!.last, 'imp') ?? 0) + (portWeek(ser, pd!.last, 'exp') ?? 0);
+    return { p, now, yoy: now != null && prev ? (now / prev - 1) * 100 : null, trade, spark: (ser ?? []).filter((x) => x.d > yearBefore(pd!.last)).map((x) => x.calls) };
+  }).filter((r) => r.now != null).sort((a, b) => b.now! - a.now!);
+  const atRisk = rows.filter((r) => { const k = riskBy.get(r.p.id); return k && (k.conflict + k.sanctions > 0 || k.hazards.length > 0); })
+    .sort((a, b) => { const x = riskBy.get(a.p.id)!, y = riskBy.get(b.p.id)!; return (y.conflict + y.hazards.length * 20) - (x.conflict + x.hazards.length * 20); });
+  const brent = oil.data?.['BZ=F'], wti = oil.data?.['CL=F'];
+  const src = tab === 'ports' ? pw : tab === 'risk' ? [s, ev, hz, oil] : s;
   return (
-    <Panel id="p-shipping" title="Shipping chokepoints" src={s} span="c4"
-      right={<Tabs small value={by} onChange={setBy} options={[['now', 'Busiest'], ['yoy', 'Biggest drop']]} />}
-      note={`Ships passing each chokepoint per day, averaged over the 7 days to ${d ? dateLabel(d.last) : 'the latest report'}, from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier. Click a row to see it on the map.`}>
-      <table className="t">
+    <Panel id="p-shipping" title="Shipping" src={src} span="c4" hasData={tab === 'ports' ? !!pd : !!d}
+      right={<Tabs small value={tab} onChange={setTab} options={[['choke', 'Chokepoints'], ['ports', 'Ports'], ['risk', 'Risk']]} />}
+      note={tab === 'ports'
+        ? `Port calls per day at the ${pd?.ports.length ?? 30} busiest ports, averaged over the 7 days to ${pd ? dateLabel(pd.last) : 'the latest report'}, with estimated cargo handled (imports + exports, metric tons), from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier.`
+        : tab === 'risk'
+          ? 'Chokepoints with armed conflict, unrest or sanctions events within 500 km in the last 7 days (GDELT, widely reported events located to a city or region; country-wide reports are left out) or an orange/red natural-hazard alert nearby (USGS, GDACS, NASA EONET). Shown with the chokepoint’s traffic and the oil price. Proximity is not proof that shipping is affected.'
+          : `Ships passing each chokepoint per day, averaged over the 7 days to ${d ? dateLabel(d.last) : 'the latest report'}, from satellite AIS signals (IMF PortWatch, updated weekly). YoY compares the same week a year earlier. A dot marks conflict or a hazard nearby (see Risk). Click a row to see it on the map.`}>
+      {tab === 'choke' && <table className="t">
         <thead><tr><th>Chokepoint</th><th>Ships/day</th><th>YoY</th><th className="hs">Tankers</th><th>120d</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.p.id} className="click" onClick={() => focus(r.p.lat, r.p.lng)} title={r.p.topIndustries.length ? 'Main cargo: ' + r.p.topIndustries.join(', ') : ''}>
-              <td>{r.p.name.replace(/ Strait$/, '')}</td>
+              <td>{r.p.name.replace(/ Strait$/, '')}{hot(r.p.id) && <i className="riskdot" title="Conflict or hazard nearby" />}</td>
               <td>{r.now!.toFixed(0)}</td>
               <td>{isNum(r.yoy) ? <Chg v={r.yoy} dp={0} /> : '—'}</td>
               <td className="hs dim">{isNum(r.tank) ? r.tank.toFixed(0) + '%' : '—'}</td>
@@ -91,7 +115,31 @@ export function Shipping() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table>}
+      {tab === 'ports' && <table className="t">
+        <thead><tr><th>Port</th><th>Calls/day</th><th>YoY</th><th className="hs">Cargo t/day</th><th>1y</th></tr></thead>
+        <tbody>{ports.map((r) => (
+          <tr key={r.p.id} className="click" onClick={() => focus(r.p.lat, r.p.lng)} title={`${r.p.name}, ${r.p.country}`}>
+            <td>{r.p.name.replace(/\s*\(.*\)$/, '')} <small className="faint">{iso2(r.p.iso3)}</small></td>
+            <td>{r.now!.toFixed(0)}</td>
+            <td>{isNum(r.yoy) ? <Chg v={r.yoy} dp={0} /> : '—'}</td>
+            <td className="hs dim">{r.trade ? big(r.trade, 1) : '—'}</td>
+            <td><Spark data={r.spark} w={56} h={16} color={T.accent} fill={false} /></td>
+          </tr>))}</tbody>
+      </table>}
+      {tab === 'risk' && <>
+        <div className="kpis">
+          <div className="kpi"><span>Brent</span><b><Big>{brent ? '$' + brent.price.toFixed(2) : '—'}</Big></b><small><Chg v={brent?.changePct} /> today</small></div>
+          <div className="kpi"><span>WTI</span><b><Big>{wti ? '$' + wti.price.toFixed(2) : '—'}</Big></b><small><Chg v={wti?.changePct} /> today</small></div>
+          <div className="kpi"><span>Chokepoints flagged</span><b><Big>{atRisk.length}</Big></b><small>of {rows.length}</small></div>
+        </div>
+        {atRisk.length ? <ul className="feed" style={{ marginTop: 8 }}>{atRisk.map((r) => { const k = riskBy.get(r.p.id)!; return (
+          <li key={r.p.id} className="click" onClick={() => focus(r.p.lat, r.p.lng)}>
+            <span className="ttl"><b>{r.p.name.replace(/ Strait$/, '')}</b>
+              <small>{[k.conflict && `${k.conflict} conflict reports${k.places.length ? ' (' + k.places.join(', ') + ')' : ''}`, k.unrest && `${k.unrest} unrest`, k.sanctions && `${k.sanctions} sanctions`, ...k.hazards.map((h) => `${HAZARD_LABEL[h.kind]}: ${h.title}`)].filter(Boolean).join(' · ')}</small></span>
+            <span className="mono" style={{ textAlign: 'right' }}>{r.now!.toFixed(0)}/day<br /><small>{isNum(r.yoy) ? <Chg v={r.yoy} dp={0} /> : ''}</small></span>
+          </li>); })}</ul> : <div className="empty">{ev.data && hz.data ? 'Nothing flagged near a chokepoint this week.' : 'Loading events…'}</div>}
+      </>}
     </Panel>
   );
 }
@@ -99,3 +147,29 @@ export function Shipping() {
 // ISO3 → ISO2 for display names (only the tracked countries are named here)
 const ISO2: Record<string, string> = { USA: 'US', CAN: 'CA', MEX: 'MX', BRA: 'BR', ARG: 'AR', CHL: 'CL', COL: 'CO', PER: 'PE', GBR: 'GB', DEU: 'DE', FRA: 'FR', ITA: 'IT', ESP: 'ES', NLD: 'NL', CHE: 'CH', SWE: 'SE', DNK: 'DK', NOR: 'NO', FIN: 'FI', IRL: 'IE', PRT: 'PT', GRC: 'GR', AUT: 'AT', BEL: 'BE', POL: 'PL', CZE: 'CZ', HUN: 'HU', TUR: 'TR', ISR: 'IL', SAU: 'SA', ARE: 'AE', QAT: 'QA', KWT: 'KW', EGY: 'EG', MAR: 'MA', NGA: 'NG', GHA: 'GH', KEN: 'KE', ZAF: 'ZA', RUS: 'RU', IND: 'IN', PAK: 'PK', BGD: 'BD', CHN: 'CN', HKG: 'HK', JPN: 'JP', KOR: 'KR', TWN: 'TW', SGP: 'SG', IDN: 'ID', THA: 'TH', MYS: 'MY', VNM: 'VN', PHL: 'PH', AUS: 'AU', NZL: 'NZ' };
 const iso2 = (iso3: string) => ISO2[iso3] ?? iso3;
+
+// ---------------------------------------------------------------- air cargo
+export function AirCargo() {
+  const c = useSource(CARGO);
+  const now = useNow();
+  const d = c.data;
+  const hubs = CARGO_HUBS.map((h) => ({ h, x: d?.hubs[h.code] })).filter((r) => r.x).sort((a, b) => (b.x!.air + b.x!.ground) - (a.x!.air + a.x!.ground));
+  const ops = Object.entries((d?.planes ?? []).reduce<Record<string, number>>((m, p) => ((m[p.op] = (m[p.op] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
+  return (
+    <Panel id="p-aircargo" title="Air cargo" src={c} span="c4"
+      note="Aircraft flying for all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL, Kalitta, Cargojet and others) within about 150 nautical miles of each hub, from the adsb.lol community ADS-B feed. Freighters of passenger airlines can’t be told apart by callsign, so they aren’t counted. Coverage depends on volunteer receivers (thin over mainland China). Turn on Cargo flights on the map to see them.">
+      {d && <>
+        <div className="kpis">
+          <div className="kpi"><span>Cargo aircraft</span><b><Big>{String(d.planes.length)}</Big></b><small>near {hubs.length} hubs</small></div>
+          <div className="kpi"><span>Airborne</span><b><Big>{String(d.planes.filter((p) => !p.ground).length)}</Big></b><small>{d.planes.filter((p) => p.ground).length} on the ground</small></div>
+          <div className="kpi"><span>Snapshot</span><b style={{ fontSize: 15 }}>{ago(d.at, now)}</b><small>{new Date(d.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</small></div>
+        </div>
+        <table className="t" style={{ marginTop: 8 }}>
+          <thead><tr><th>Hub</th><th>Airborne</th><th>Ground</th></tr></thead>
+          <tbody>{hubs.map(({ h, x }) => <tr key={h.code} className="click" onClick={() => focus(h.lat, h.lng)}><td><b className="mono">{h.code}</b> <small className="dim">{h.name}</small></td><td>{x!.ok ? x!.air : '—'}</td><td className="dim">{x!.ok ? x!.ground : 'no answer'}</td></tr>)}</tbody>
+        </table>
+        {ops.length > 0 && <p className="faint" style={{ fontSize: 11.5, marginTop: 8 }}>{ops.slice(0, 8).map(([o, n]) => `${o} ${n}`).join(' · ')}</p>}
+      </>}
+    </Panel>
+  );
+}

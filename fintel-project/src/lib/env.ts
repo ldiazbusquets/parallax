@@ -9,8 +9,8 @@ export const STATIC = !NODE && import.meta.env.VITE_STATIC === '1';
 const BASE: string = (import.meta.env.BASE_URL as string | undefined) ?? '/';
 
 export const HOST = NODE
-  ? { yahoo: 'https://query1.finance.yahoo.com', fred: 'https://fred.stlouisfed.org', sec: 'https://www.sec.gov', secdata: 'https://data.sec.gov', fed: 'https://www.federalreserve.gov', cnbc: 'https://search.cnbc.com', mw: 'https://feeds.content.dowjones.io', bis: 'https://stats.bis.org', imf: 'https://www.imf.org', ff: 'https://nfs.faireconomy.media', boe: 'https://www.bankofengland.co.uk', mof: 'https://www.mof.go.jp', rba: 'https://www.rba.gov.au', nasdaq: 'https://api.nasdaq.com', finra: 'https://api.finra.org' }
-  : { yahoo: '/px/yahoo', fred: '/px/fred', sec: '/px/sec', secdata: '/px/xbrl', fed: '/px/fed', cnbc: '/px/cnbc', mw: '/px/mw', bis: '/px/bis', imf: '/px/imf', ff: '/px/ff', boe: '/px/boe', mof: '/px/mof', rba: '/px/rba', nasdaq: '/px/nasdaq', finra: '/px/finra' };
+  ? { yahoo: 'https://query1.finance.yahoo.com', fred: 'https://fred.stlouisfed.org', sec: 'https://www.sec.gov', secdata: 'https://data.sec.gov', fed: 'https://www.federalreserve.gov', cnbc: 'https://search.cnbc.com', mw: 'https://feeds.content.dowjones.io', bis: 'https://stats.bis.org', imf: 'https://www.imf.org', ff: 'https://nfs.faireconomy.media', boe: 'https://www.bankofengland.co.uk', mof: 'https://www.mof.go.jp', rba: 'https://www.rba.gov.au', nasdaq: 'https://api.nasdaq.com', finra: 'https://api.finra.org', adsb: 'https://api.adsb.lol' }
+  : { yahoo: '/px/yahoo', fred: '/px/fred', sec: '/px/sec', secdata: '/px/xbrl', fed: '/px/fed', cnbc: '/px/cnbc', mw: '/px/mw', bis: '/px/bis', imf: '/px/imf', ff: '/px/ff', boe: '/px/boe', mof: '/px/mof', rba: '/px/rba', nasdaq: '/px/nasdaq', finra: '/px/finra', adsb: '/px/adsb' };
 
 /** Snapshot files are JSON: { generated: epoch ms, data }. */
 export interface Snap<T> { generated: number; data: T }

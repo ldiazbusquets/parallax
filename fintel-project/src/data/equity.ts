@@ -31,6 +31,29 @@ export async function nasdaqScreener(): Promise<ScreenRow[]> {
   if (rows.length < 1000) throw new Error(`only ${rows.length} stocks returned`);
   return rows;
 }
+
+// ---- the largest US-listed companies, one entry per company (used by the heatmap and the site's company pages)
+export const NOT_COMMON = /depositary shares? represent|preferred|\bnotes?\b|debentures?|%|warrants?|\bunits?\b|\brights\b/i;
+/** Nasdaq leaves a few large companies without a sector. */
+export const SECTOR_FIX: Record<string, string> = { 'BRK/A': 'Finance', 'BRK/B': 'Finance' };
+/** Share classes of one company share a key ("Alphabet Inc. Class A" = "Alphabet Inc. Class C"). */
+export const companyKey = (name: string) => name.replace(/\s+(class [a-z]\b|capital stock|common stock|ordinary shares).*$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+/** The n largest companies by market value; share classes are merged (the first, most valuable class stands for the company). */
+export function topCompanies(rows: ScreenRow[], n: number, needChange = false): ScreenRow[] {
+  const seen = new Set<string>(), out: ScreenRow[] = [];
+  for (const r of [...rows].filter((r) => r.mc != null && r.mc > 0 && (!needChange || r.ch != null) && !NOT_COMMON.test(r.n)).sort((a, b) => b.mc! - a.mc!)) {
+    const k = companyKey(r.n);
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(r);
+    if (out.length >= n) break;
+  }
+  return out;
+}
+/** How many of the largest companies the website builds full pages for (on top of TRACKED). */
+export const WIDE_N = 500;
+/** Yahoo and SEC write share classes with a dash (BRK-B); Nasdaq uses a slash (BRK/B). */
+export const dashSym = (s: string) => s.replace(/[/.]/g, '-');
+
 export const SCREENER: SourceDef<ScreenRow[]> = {
   id: 'nasdaq:screener', label: 'Stock screener', provider: 'Nasdaq', every: 30 * 60_000,
   asOf: STATIC ? snapTime('screener.json') : undefined,

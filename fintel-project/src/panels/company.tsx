@@ -4,12 +4,19 @@ import { useSource } from '@/data/store';
 import { companyNewsSource } from '@/data/sources';
 import { useQuotes } from '@/data/yahoo';
 import { ago, big, dateLabel, isNum, num, pct, price } from '@/lib/format';
-import { STATIC } from '@/lib/env';
+import { snap, snapTime, STATIC } from '@/lib/env';
 import { Chg, Panel, Tabs, Big, useNow } from '@/ui/kit';
 import { PriceChart, useChartStyle } from '@/ui/charts';
 import { chartSource, RANGES } from './markets';
 import { AnalystRatings, ShortCard } from './equity';
 import { SCREENER, TRACKED } from '@/data/equity';
+import { HoldersCard } from './holders';
+
+import type { SourceDef } from '@/data/store';
+
+/** Companies the website has full pages for (tracked + the largest 500), as written by the snapshot job. */
+const COVERED: SourceDef<{ ticker: string }[]> = { id: 'site:companies', label: 'Company pages', provider: 'SEC EDGAR', every: 6 * 60 * 60_000, asOf: snapTime('companies.json'), fetch: () => snap<{ ticker: string }[]>('companies.json') };
+const sk = (t: string) => t.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 // Bloomberg-style company page: DES (description), GP (chart), FA (financials), insider trades, filings, links.
 
@@ -88,7 +95,13 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
   // The website builds full pages for the companies it tracks; any other listing gets the screener's facts.
   const sc = useSource(SCREENER);
   const row = sc.data?.find((r) => r.s === ticker);
-  const partial = STATIC && !TRACKED.includes(ticker);
+  const cov = useSource(COVERED);
+  const covered = cov.data ? cov.data.some((x) => sk(x.ticker) === sk(ticker)) : TRACKED.includes(ticker);
+  const partial = STATIC && !covered && !co.data;
+  const tracked = !STATIC || TRACKED.includes(ticker); // intraday, 5Y and max charts and news exist for these
+  const ranges = Object.keys(RANGES).filter((k) => tracked || ['5D', '1M', '6M', '1Y'].includes(k));
+  useEffect(() => { if (!ranges.includes(range)) setRange('1Y'); }, [ranges.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  const px = x?.price ?? row?.p ?? null;
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [onClose]);
   useEffect(() => { document.title = `${ticker} · Parallax`; return () => { document.title = 'Parallax'; }; }, [ticker]);
   const links = useMemo(() => (net.data?.people ?? []).filter((p) => p.links.length > 1 && p.links.some((l) => l.ticker === ticker)), [net.data, ticker]);
@@ -120,20 +133,21 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
               <div className="kpi"><span>Sector</span><b style={{ fontSize: 16 }}>{row.sec || '—'}</b><small>{row.ind}</small></div>
               <div className="kpi"><span>Country</span><b style={{ fontSize: 16 }}>{row.cty || '—'}</b></div>
             </div> : <div className="empty">{sc.data ? `${ticker} isn’t a US-listed stock in Nasdaq’s screener.` : 'Loading…'}</div>}
-            <p className="faint" style={{ fontSize: 12.5, marginTop: 14 }}>The website builds full pages (charts, financials, filings, insider trades, analyst ratings) for the {TRACKED.length} companies it tracks. Run Parallax on your computer for a full page of any company.</p>
+            <p className="faint" style={{ fontSize: 12.5, marginTop: 14 }}>The website builds full pages (charts, financials, filings, insider trades, holders, analyst ratings) for the {cov.data?.length ?? TRACKED.length} largest US companies; this one isn’t among them yet. Run Parallax on your computer for a full page of any company.</p>
           </Panel>
           <ShortCard t={ticker} shares={row && isNum(row.mc) ? row.mc / row.p : null} sharesFrom="Nasdaq market value ÷ price" />
         </div>
       ) : <div className="co-grid">
-        <Panel title="Price" src={[q, ch]} span="c8" hasData={!!ch.data || !!x} right={<div className="tabrow"><Tabs small value={style} onChange={setStyle} options={[['line', 'Line'], ['candles', 'Candles']]} /><Tabs small value={range} onChange={setRange} options={Object.keys(RANGES).map((k) => [k, k] as [string, string])} /></div>}>
+        <Panel title="Price" src={[q, ch]} span="c8" hasData={!!ch.data || !!x} right={<div className="tabrow"><Tabs small value={style} onChange={setStyle} options={[['line', 'Line'], ['candles', 'Candles']]} /><Tabs small value={range} onChange={setRange} options={ranges.map((k) => [k, k] as [string, string])} /></div>}>
           {ch.data && ch.data.c.length > 1 ? <PriceChart bars={ch.data} style={style} h={240} base={range === '1D' ? x?.prev ?? ch.data.prevClose : undefined} intraday={range === '1D' || range === '5D'} /> : <div className="empty">{ch.error ?? 'Loading chart…'}</div>}
           {x && <div className="legend"><span>Day {price(x.dayLow)} – {price(x.dayHigh)}</span><span>52W {price(x.yearLow)} – {price(x.yearHigh)}</span>{isNum(x.yearHigh) && <span>{pct((x.price / x.yearHigh - 1) * 100, 1)} from 52W high</span>}</div>}
         </Panel>
         <Panel title="Key figures" src={co} span="c4" note="Valuation uses the live price and SEC-reported shares and earnings.">
-          {c && <Stats c={c} px={x?.price ?? null} />}
+          {c && <Stats c={c} px={px} />}
         </Panel>
         <AnalystRatings t={ticker} />
         <ShortCard t={ticker} shares={c?.shares?.val ?? null} />
+        <HoldersCard t={ticker} stakes={c?.stakes} />
         <Panel title="Profile" src={co} span="c4">
           {c && <>
             {c.description ? <p style={{ fontSize: 12.5, marginBottom: 10 }}>{c.description}</p> : <p className="dim" style={{ fontSize: 12 }}>The SEC record has no business description; see the latest 10-K below.</p>}
@@ -146,13 +160,6 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
           </>}
         </Panel>
         <Panel title="Financials (FA)" src={co} span="c8">{c && <Financials c={c} />}</Panel>
-        <Panel title="Connections" src={net} span="c4" hasData={net.status !== 'error' || !!net.data}
-          note="People who are insiders here and at other companies this terminal tracks (from Form 4 filings).">
-          {links.length ? <ul className="feed">{links.map((p) => (
-            <li key={p.cik}><span className="ttl"><b>{p.name}</b><small>{p.links.map((l) => `${l.ticker}: ${l.role}`).join(' · ')}</small></span>
-              <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{p.links.filter((l) => l.ticker !== ticker).map((l) => <button key={l.ticker} className="btn" onClick={() => onTicker(l.ticker)}>{l.ticker}</button>)}</span></li>
-          ))}</ul> : <div className="empty">{net.data ? 'No shared insiders with other tracked companies.' : 'Network data not built yet.'}</div>}
-        </Panel>
         <Panel title="Insider transactions (Form 4)" src={co} span="c8" note={c ? `Last ${c.insiders.length} transactions from recent Form 4 filings. Open-market buys (P) and sales (S) are the signal; awards, exercises and tax withholding are routine.` : undefined}>
           {c && <>
             <div className="kpis">
@@ -172,8 +179,15 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
             </div>
           </>}
         </Panel>
-        <CompanyNews t={ticker} />
-        <Panel title="Filings (CF)" src={co} span="c12">
+        <Panel title="Connections" src={net} span="c4" hasData={net.status !== 'error' || !!net.data}
+          note="People who are insiders here and at other companies this terminal tracks (from Form 4 filings).">
+          {links.length ? <ul className="feed">{links.map((p) => (
+            <li key={p.cik}><span className="ttl"><b>{p.name}</b><small>{p.links.map((l) => `${l.ticker}: ${l.role}`).join(' · ')}</small></span>
+              <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{p.links.filter((l) => l.ticker !== ticker).map((l) => <button key={l.ticker} className="btn" onClick={() => onTicker(l.ticker)}>{l.ticker}</button>)}</span></li>
+          ))}</ul> : <div className="empty">{net.data ? 'No shared insiders with other tracked companies.' : 'Network data not built yet.'}</div>}
+        </Panel>
+        {tracked ? <CompanyNews t={ticker} /> : null}
+        <Panel title="Filings (CF)" src={co} span={tracked ? 'c8' : 'c12'}>
           {c && <table className="t"><thead><tr><th>Form</th><th>Filed</th><th>Description</th></tr></thead><tbody>
             {c.filings.map((f, i) => <tr key={i}><td><a href={f.link} target="_blank" rel="noreferrer"><b className="mono">{f.form}</b></a></td><td className="dim">{dateLabel(f.date)}</td><td className="l" style={{ fontFamily: 'var(--sans)', whiteSpace: 'normal' }}>{f.desc}{f.items ? <small className="faint"> · Items {f.items}</small> : ''}</td></tr>)}
           </tbody></table>}

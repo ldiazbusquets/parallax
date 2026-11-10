@@ -1,16 +1,18 @@
 /* Builds the data snapshot for the website (run by .github/workflows/deploy.yml every ~15 minutes).
    Fetches the sources browsers can't reach directly (Yahoo, FRED, SEC, RSS) and writes public/snap/*.json
    as { generated, data }. Company files (SEC financials + Form 4) are refreshed when older than 20 hours.
-   Usage: npx vite-node scripts/snapshot.ts [--only=quotes,fred,sec,rss,ecocal,yields,screener,companies]                          */
+   Usage: npx vite-node scripts/snapshot.ts [--only=quotes,fred,sec,rss,ecocal,yields,screener,companies,funds,…]                          */
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chartQuotes, chartLive, ohlcSnapName, SNAP_FILES } from '../src/data/yahoo';
 import { ecoCalendar, govYields } from '../src/data/global';
-import { finnhubRecs, finraShortInterest, nasdaqScreener, TRACKED } from '../src/data/equity';
+import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreener, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
+import { fetchCargo } from '../src/data/trade';
+import { figiTickers, FUNDS, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
 import { unzipSync, strFromU8 } from 'fflate';
 import { parseGdeltExport, summariseWindow, type Ev } from '../src/data/events';
 import { fredMany, DAILY_IDS, MACRO_IDS, FRED_SINCE } from '../src/data/fred';
-import { EDGAR_FORMS, edgarUrl, edgarSnapName, FEEDS, finnhubEarnings, finnhubIpos, groqBrief, GROQ_MODEL, bisPolicy, imfWeo, finnhubCompanyNews } from '../src/data/sources';
+import { EDGAR_FORMS, edgarUrl, edgarSnapName, FEEDS, finnhubEarnings, finnhubIpos, finnhubSeason, groqBrief, GROQ_MODEL, bisPolicy, imfWeo, finnhubCompanyNews } from '../src/data/sources';
 import { briefPrompt } from '../src/data/brief';
 import { buildCompany, buildNetwork, coSnapName, type CompanyData } from '../src/data/company';
 import { COMMODITIES, COUNTRIES, DEFAULT_WATCHLIST, FX, HEATMAP, INDICES, SECTORS, TAPE, VOL } from '../src/data/universe';
@@ -69,6 +71,21 @@ export const SYMBOLS = [...new Set([
 ])];
 export const COMPANIES = [...new Set([...HEATMAP.flatMap((g) => g.items), ...DEFAULT_WATCHLIST])].filter((t) => !['SPY', 'QQQ', 'TLT'].includes(t));
 
+/** The largest US companies (from the screener snapshot) that the site builds full pages for, beyond TRACKED. */
+async function wideList(): Promise<string[]> {
+  const rows = await read<ScreenRow[]>('screener.json');
+  const have = new Set(COMPANIES.map((t) => t.toUpperCase().replace(/[^A-Z0-9]/g, '')));
+  return topCompanies(rows ?? [], WIDE_N).map((r) => r.s).filter((s) => !have.has(s.toUpperCase().replace(/[^A-Z0-9]/g, '')));
+}
+/** Missing files first, then the oldest; `maxAge` ms decides what is due. */
+async function due(names: { key: string; file: string }[], maxAge: number) {
+  const ages = await Promise.all(names.map(async (n) => ({ ...n, gen: (await readSnap<unknown>(n.file))?.generated ?? 0 })));
+  return { todo: ages.filter((a) => Date.now() - a.gen >= maxAge).sort((a, b) => a.gen - b.gen), fresh: ages.filter((a) => Date.now() - a.gen < maxAge).length };
+}
+const CACHE = path.resolve(__dirname, '../.cache');
+async function readCache<T>(f: string, dflt: T): Promise<T> { try { return JSON.parse(await readFile(path.join(CACHE, f), 'utf8')) as T; } catch { return dflt; } }
+async function writeCache(f: string, x: unknown) { await mkdir(CACHE, { recursive: true }); await writeFile(path.join(CACHE, f), JSON.stringify(x)); }
+
 async function main() {
   await mkdir(OUT, { recursive: true });
   await probe();
@@ -101,20 +118,22 @@ async function main() {
     // Daily OHLC bars for candlesticks: tracked companies, indices and sector ETFs (rebuilt once a day).
     await step('ohlc', async () => {
       const syms = [...new Set([...TRACKED, ...DEFAULT_WATCHLIST, ...TAPE.map((x) => x[0]), ...INDICES.flatMap((r) => r.items.map((x) => x[0])), ...SECTORS.map((x) => x[0]), 'SPY', 'QQQ'])];
-      let done = 0, kept = 0, failed = 0;
-      for (const s of syms) {
+      const wide = await wideList(), t0 = Date.now();
+      let done = 0, kept = 0, failed = 0, left = 0;
+      for (const s of [...syms, ...wide]) {
         const f = ohlcSnapName(s);
         if (await fresh(f)) { kept++; continue; }
+        if (Date.now() - t0 > 4.5 * 60_000) { left++; continue; } // the rest next run
         try {
-          const b = await chartLive(s, '1y', '1d');
+          const b = await chartLive(dashSym(s), '1y', '1d');
           if (!b.o) throw new Error('no OHLC');
           await save(f, b); done++;
         } catch (e) { failed++; if (failed <= 3) log('  ohlc', s, (e as Error).message); }
         await new Promise((r) => setTimeout(r, 500));
       }
       if (!done && !kept) throw new Error(`all ${failed} failed`);
-      return `${done} refreshed, ${kept} cached, ${failed} failed`;
-    }, 5 * 60_000);
+      return `${done} refreshed, ${kept} cached, ${failed} failed${left ? `, ${left} next run` : ''} (incl. ${wide.length} largest companies)`;
+    }, 5.5 * 60_000);
     await step('gspc-history', async () => {
       if (await fresh('chart-_GSPC-max.json')) return 'cached';
       const b = await chartLive('^GSPC', 'max', '1mo'); await save('chart-_GSPC-max.json', b); return `${b.c.length} months`;
@@ -223,11 +242,25 @@ async function main() {
     await step('shorts', async () => {
       const old = await readSnap<unknown>('shorts.json');
       if (old && Date.now() - old.generated < 12 * 3600_000) return 'cached (12h)';
-      const s = await finraShortInterest(TRACKED);
+      const list = [...TRACKED, ...await wideList()], s: Awaited<ReturnType<typeof finraShortInterest>> = {};
+      for (let i = 0; i < list.length; i += 150) { // FINRA writes share classes with a dot (BRK.B)
+        const part = list.slice(i, i + 150), finra = new Map(part.map((t) => [t.replace(/[/-]/g, '.'), t]));
+        try { for (const [k, v] of Object.entries(await finraShortInterest([...finra.keys()]))) s[finra.get(k) ?? k] = v; } catch (e) { log('  shorts', i, (e as Error).message); }
+      }
+      if (!Object.keys(s).length) throw new Error('FINRA returned no short interest');
       await save('shorts.json', s);
       const any = Object.entries(s)[0];
-      return `${Object.keys(s).length}/${TRACKED.length} companies · e.g. ${any?.[0]} ${any?.[1].short} short, ${any?.[1].dtc?.toFixed(1)} days (${any?.[1].date})`;
+      return `${Object.keys(s).length}/${list.length} companies · e.g. ${any?.[0]} ${any?.[1].short} short, ${any?.[1].dtc?.toFixed(1)} days (${any?.[1].date})`;
     });
+  }
+
+  if (want('cargo')) {
+    await step('cargo', async () => {
+      const c = await fetchCargo(3000); // adsb.lol rate-limits bursts: one hub every 3 s
+      await save('cargo.json', c, c.at);
+      const busiest = Object.entries(c.hubs).sort((a, b) => (b[1].air + b[1].ground) - (a[1].air + a[1].ground))[0];
+      return `${c.planes.length} cargo aircraft near ${Object.values(c.hubs).filter((h) => h.ok).length}/${Object.keys(c.hubs).length} hubs · busiest ${busiest?.[0]} (${busiest ? busiest[1].air + busiest[1].ground : 0})`;
+    }, 2 * 60_000);
   }
 
   if (want('bis')) {
@@ -250,17 +283,32 @@ async function main() {
       return `${Object.keys(out).length} companies`;
     }, 3 * 60_000);
     await step('ratings', async () => {
-      const old = await readSnap<unknown>('ratings.json');
-      if (old && Date.now() - old.generated < 20 * 3600_000) return 'cached (daily)';
-      const out: Record<string, unknown> = {};
-      for (const t of TRACKED) { // free tier: 60 calls/min
-        try { const r = await finnhubRecs(t, k); if (r.length) out[t] = r; } catch (e) { log('  ratings', t, (e as Error).message); }
+      // tracked companies daily, the largest-500 list about weekly; ~150 calls a run (free tier: 60 calls/min)
+      const out = (await read<Record<string, unknown>>('ratings.json')) ?? {};
+      const at = await readCache<Record<string, number>>('ratings-at.json', {});
+      const wide = await wideList(), t0 = Date.now();
+      const isDue = (t: string, age: number) => Date.now() - (at[t] ?? 0) > age;
+      const todo = [...TRACKED.filter((t) => isDue(t, 20 * 3600_000)), ...wide.filter((t) => isDue(t, 6 * 864e5)).sort((a, b) => (at[a] ?? 0) - (at[b] ?? 0))];
+      let n = 0;
+      for (const t of todo) {
+        if (Date.now() - t0 > 2.5 * 60_000) break;
+        try { const r = await finnhubRecs(t.replace(/[/-]/g, '.'), k); if (r.length) out[t] = r; at[t] = Date.now(); n++; } catch (e) { log('  ratings', t, (e as Error).message); }
         await new Promise((r) => setTimeout(r, 1100));
       }
       if (!Object.keys(out).length) throw new Error('no ratings');
-      await save('ratings.json', out);
-      return `${Object.keys(out).length} companies`;
+      await writeCache('ratings-at.json', at);
+      if (n) await save('ratings.json', out);
+      return `${n} refreshed, ${Object.keys(out).length} companies, ${Math.max(0, todo.length - n)} due later`;
     }, 3 * 60_000);
+    await step('season', async () => {
+      const old = await readSnap<unknown>('season.json');
+      if (old && Date.now() - old.generated < 6 * 3600_000) return 'cached (6h)';
+      const large = new Set(topCompanies((await read<ScreenRow[]>('screener.json')) ?? [], WIDE_N).map((r) => r.s.toUpperCase().replace(/[^A-Z0-9]/g, '')));
+      if (large.size < 100) throw new Error('no screener to pick the largest companies from');
+      const d = await finnhubSeason(k, large);
+      await save('season.json', d);
+      return `${d.all.n} reports, ${d.all.beatPct?.toFixed(0)}% beat · largest ${d.largeN}: ${d.large.n} reported, ${d.large.beatPct?.toFixed(0)}% beat`;
+    });
     await step('ipos', async () => { const i = await finnhubIpos(k); await save('ipo.json', i); return `${i.length} IPOs`; });
   }
 
@@ -291,6 +339,36 @@ async function main() {
       if (!done && !kept) throw new Error(`all ${failed} failed`);
       return `${done} refreshed, ${kept} cached, ${failed} failed`;
     }, 10 * 60_000);
+    await step('companies-wide', async () => {
+      // the 500 largest US companies: refreshed weekly, a slice per run (missing ones first), lighter on Form 4s
+      const wide = await wideList(), t0 = Date.now();
+      const { todo, fresh: kept } = await due(wide.map((t) => ({ key: t, file: coSnapName(t) })), 7 * 864e5);
+      let done = 0, failed = 0;
+      for (const x of todo) {
+        if (Date.now() - t0 > 7 * 60_000) break;
+        try { await save(x.file, await buildCompany(x.key, 8, 6)); done++; }
+        catch (e) { failed++; if (failed <= 5) log('  company', x.key, (e as Error).message); }
+      }
+      if (!wide.length) throw new Error('no screener snapshot to pick companies from');
+      return `${done} built, ${kept} current, ${failed} failed, ${todo.length - done - failed} next run (of ${wide.length})`;
+    }, 8 * 60_000);
+  }
+
+  if (want('funds')) {
+    await step('funds', async () => {
+      // 13F filings change once a quarter: check daily for a newer one; CUSIP → ticker map is kept in .cache
+      const old = await readSnap<FundsData>('funds.json');
+      if (old && Date.now() - old.generated < 20 * 3600_000) return 'cached (daily)';
+      const cus = await readCache<Record<string, string | null>>('cusips.json', {});
+      const raw: { def: (typeof FUNDS)[number]; r: Awaited<ReturnType<typeof latest13F>> }[] = [], errors: string[] = [];
+      for (const def of FUNDS) { try { raw.push({ def, r: await latest13F(def) }); } catch (e) { errors.push(`${def.name}: ${(e as Error).message}`); log('  13F', def.name, (e as Error).message); } }
+      const need = [...new Set(raw.flatMap((x) => x.r.rows.slice(0, 40).map((h) => h.cusip)))].filter((c) => !(c in cus));
+      if (need.length) { try { Object.assign(cus, await figiTickers(need.slice(0, 600))); } catch (e) { log('  openfigi', (e as Error).message); } await writeCache('cusips.json', cus); }
+      const funds: Fund[] = raw.map(({ def, r }) => ({ cik: def.cik, name: def.name, style: def.style, period: r.period, filed: r.filed, positions: r.rows.length, link: r.link, ...shapeHoldings(r.rows, cus) }));
+      if (!funds.length) throw new Error(errors.join('; '));
+      await save('funds.json', { funds, errors } satisfies FundsData);
+      return `${funds.length}/${FUNDS.length} funds, ${need.length} new CUSIPs mapped · ${funds.map((f) => f.name.split(' ')[0] + ' ' + f.period).slice(0, 4).join(', ')}…`;
+    }, 6 * 60_000);
   }
 
   // the network is rebuilt from whatever company files exist
@@ -300,10 +378,10 @@ async function main() {
     const cos: CompanyData[] = [];
     for (const f of files) cos.push((JSON.parse(await readFile(path.join(dir, f), 'utf8')) as { data: CompanyData }).data);
     if (!cos.length) throw new Error('no company files');
-    const net = buildNetwork(cos);
+    const net = buildNetwork(cos, await read<FundsData>('funds.json'));
     await save('network.json', net);
     await save('companies.json', cos.map((c) => ({ ticker: c.ticker, name: c.name, industry: c.industry })));
-    return `${net.companies.length} companies, ${net.people.length} people, ${net.people.filter((p) => p.links.length > 1).length} connecting 2+ companies`;
+    return `${net.companies.length} companies, ${net.people.length} people, ${net.people.filter((p) => p.links.length > 1).length} connecting 2+ companies, ${net.holders?.length ?? 0} funds/activists`;
   });
 
   await save('meta.json', report);

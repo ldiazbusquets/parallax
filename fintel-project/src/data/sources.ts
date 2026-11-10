@@ -231,6 +231,50 @@ export async function finnhubEarnings(key: string): Promise<{ upcoming: Earnings
     reported: all.filter((e) => e.epsAct != null && e.epsEst != null).sort((a, b) => b.date.localeCompare(a.date)),
   };
 }
+
+// ---- earnings season: beat rate over the last ~13 weeks (a full reporting season)
+export interface SeasonStat { n: number; beat: number; miss: number; inline: number; beatPct: number | null; medianSurprise: number | null; revN: number; revBeat: number }
+export interface SeasonData { from: string; to: string; all: SeasonStat; large: SeasonStat; largeN: number; weeks: { wk: string; n: number; beat: number }[]; beats: EarningsEvent[]; misses: EarningsEvent[] }
+export const surprisePct = (e: EarningsEvent) => (e.epsAct != null && e.epsEst != null && Math.abs(e.epsEst) >= 0.01 ? ((e.epsAct - e.epsEst) / Math.abs(e.epsEst)) * 100 : null);
+const median = (xs: number[]) => { if (!xs.length) return null; const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function stat(rows: EarningsEvent[]): SeasonStat {
+  const r = rows.filter((e) => e.epsAct != null && e.epsEst != null);
+  const beat = r.filter((e) => e.epsAct! > e.epsEst!).length, miss = r.filter((e) => e.epsAct! < e.epsEst!).length;
+  const rev = r.filter((e) => e.revAct != null && e.revEst != null && e.revEst > 0);
+  return { n: r.length, beat, miss, inline: r.length - beat - miss, beatPct: r.length ? (beat / r.length) * 100 : null, medianSurprise: median(r.map(surprisePct).filter((x): x is number => x != null)), revN: rev.length, revBeat: rev.filter((e) => e.revAct! > e.revEst!).length };
+}
+/** Monday of the week (UTC) a date falls in. */
+const weekOf = (d: string) => { const t = new Date(d + 'T00:00:00Z'), k = (t.getUTCDay() + 6) % 7; return new Date(t.getTime() - k * 864e5).toISOString().slice(0, 10); };
+/** Beat rate for every reporter and for the largest companies (`large`, Nasdaq-style symbols compared without punctuation). */
+export function seasonStats(rows: EarningsEvent[], large: Set<string>, from: string, to: string): SeasonData {
+  const key = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const seen = new Set<string>(), uniq: EarningsEvent[] = [];
+  for (const e of rows) { const k = e.symbol + e.date; if (!seen.has(k) && e.epsAct != null && e.epsEst != null) { seen.add(k); uniq.push(e); } }
+  const big = uniq.filter((e) => large.has(key(e.symbol)));
+  const wk = new Map<string, { n: number; beat: number }>();
+  for (const e of big) { const w = weekOf(e.date), x = wk.get(w) ?? { n: 0, beat: 0 }; x.n++; if (e.epsAct! > e.epsEst!) x.beat++; wk.set(w, x); }
+  const bySurprise = big.filter((e) => surprisePct(e) != null).sort((a, b) => surprisePct(b)! - surprisePct(a)!);
+  return {
+    from, to, all: stat(uniq), large: stat(big), largeN: large.size,
+    weeks: [...wk.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([w, x]) => ({ wk: w, ...x })),
+    beats: bySurprise.slice(0, 8), misses: bySurprise.slice(-8).reverse(),
+  };
+}
+export async function finnhubSeason(key: string, large: Set<string>, days = 91): Promise<SeasonData> {
+  const rows: EarningsEvent[] = [];
+  for (let back = days; back > 0; back -= 14) { // two weeks per call keeps each answer under the free tier's row cap
+    const j = await getJSON<{ earningsCalendar: any[] }>(`${FH}/calendar/earnings?from=${isoDaysAgo(back)}&to=${isoDaysAgo(Math.max(0, back - 13))}&token=${key}`);
+    for (const e of j.earningsCalendar || []) rows.push({ symbol: e.symbol, date: e.date, hour: e.hour, epsEst: e.epsEstimate ?? null, epsAct: e.epsActual ?? null, revEst: e.revenueEstimate ?? null, revAct: e.revenueActual ?? null });
+    await new Promise((r) => setTimeout(r, 1100));
+  }
+  if (!rows.length) throw new Error('no earnings rows');
+  return seasonStats(rows, large, isoDaysAgo(days), isoDaysAgo(0));
+}
+export const SEASON: SourceDef<SeasonData> = {
+  id: 'finnhub:season', label: 'Earnings season', provider: 'Finnhub', every: 6 * 60 * 60_000,
+  asOf: snapTime('season.json'),
+  fetch: () => snap<SeasonData>('season.json'),
+};
 export async function finnhubIpos(key: string): Promise<IpoEvent[]> {
   const j = await getJSON<{ ipoCalendar: any[] }>(`${FH}/calendar/ipo?from=${isoDaysAgo(14)}&to=${isoDaysAgo(-30)}&token=${key}`);
   return (j.ipoCalendar || []).map((e) => ({ symbol: e.symbol || '', name: e.name, date: e.date, exchange: e.exchange || '', price: e.price || '', shares: e.numberOfShares ?? null, status: e.status || '' })).sort((a, b) => b.date.localeCompare(a.date));

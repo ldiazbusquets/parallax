@@ -35,6 +35,9 @@ export const FUNCTIONS: Fn[] = [
   { code: 'GOVT', name: 'Government bonds, 10-year (daily)', target: 'p-govies', keywords: 'bund gilt jgb sovereign yields bonds global' },
   { code: 'EQS', name: 'Stock screener', target: 'p-screener', keywords: 'screen filter stocks market cap sector movers' },
   { code: 'SI', name: 'Short interest', target: 'p-shorts', keywords: 'short squeeze days to cover finra' },
+  { code: 'AIR', name: 'Air cargo flights at the big hubs', target: 'p-aircargo', keywords: 'cargo flights fedex ups freight air hubs planes adsb' },
+  { code: 'HDS', name: 'Fund holdings (13F)', target: 'p-funds', keywords: 'hedge funds 13f berkshire buffett ackman burry holdings portfolio activist' },
+  { code: 'ERN', name: 'Earnings season beat rate', target: 'p-season', keywords: 'earnings season beat miss surprise eps revenue' },
 ];
 
 export function goTo(target: string) {

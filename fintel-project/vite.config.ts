@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => {
     '/px/rba': relay('https://www.rba.gov.au', '/px/rba', { 'User-Agent': BROWSER_UA }),
     '/px/nasdaq': relay('https://api.nasdaq.com', '/px/nasdaq', { 'User-Agent': BROWSER_UA, Accept: 'application/json, text/plain, */*' }),
     '/px/finra': relay('https://api.finra.org', '/px/finra', { 'User-Agent': BROWSER_UA, Accept: 'application/json' }),
+    '/px/adsb': relay('https://api.adsb.lol', '/px/adsb', { 'User-Agent': BROWSER_UA, Accept: 'application/json' }),
   };
   return {
     plugins: [react()],

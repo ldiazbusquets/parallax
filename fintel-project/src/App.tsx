@@ -13,11 +13,12 @@ import { Alerts, Toasts } from '@/panels/alerts';
 import { LinkView } from '@/panels/network';
 import { CompanyPage, openCompany, useCompanyRoute } from '@/panels/company';
 import { WorldMap } from '@/map/WorldMap';
-import { WorldEvents, Shipping } from '@/panels/geo';
+import { AirCargo, WorldEvents, Shipping } from '@/panels/geo';
 import { CommandBar } from '@/ui/Command';
 import { Footer } from '@/ui/Footer';
 import { useInstall } from '@/ui/install';
 import { Slot, useWorkspaces, WORKSPACES, type Span } from '@/ui/layout';
+import { EarningsSeason, FundHoldings } from './panels/holders';
 
 // Exchange hours (local time) for the clocks. Weekends closed; holidays not modelled.
 // The usual trading-desk set: the three big hubs (New York, London, Tokyo) plus Frankfurt, Hong Kong and
@@ -135,6 +136,9 @@ export default function App() {
     screener: { id: 'p-screener', label: 'Stock screener', span: 'c12', el: <Screener /> },
     shipping: { id: 'p-shipping', label: 'Shipping chokepoints', span: 'c4', el: <Shipping /> },
     shorts: { id: 'p-shorts', label: 'Short interest', span: 'c4', el: <ShortInterest /> },
+    aircargo: { id: 'p-aircargo', label: 'Air cargo', span: 'c4', el: <AirCargo /> },
+    funds: { id: 'p-funds', label: 'Fund holdings', span: 'c8', el: <FundHoldings /> },
+    season: { id: 'p-season', label: 'Earnings season', span: 'c4', el: <EarningsSeason /> },
   };
   const L = useWorkspaces(Object.keys(PANELS));
   const hidden = Object.keys(PANELS).filter((k) => !L.items.some((i) => i.key === k));

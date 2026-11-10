@@ -98,6 +98,26 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Layout (`src/ui/layout.tsx`): panel registry lives in App.tsx (`PANELS`); `WORKSPACES` (tabs: Overview, Markets,
   Macro & Rates, Geo, Companies) each have a default layout, rows summing to 12; edits are saved per tab (`#/w/<id>`).
 
+- Top 500 (Phase 4): `topCompanies(screener, WIDE_N)` in equity.ts (share classes merged, preferreds/notes out) picks the
+  largest US companies; the job builds their SEC company files weekly (`companies-wide`, a time-boxed slice per run, 8 Form 4s),
+  1y OHLC, ratings (~weekly, `.cache/ratings-at.json`) and FINRA short interest. `companies.json` lists every built page;
+  the company page is "partial" only when a ticker has no file. Nasdaq writes share classes BRK/B, Yahoo/SEC BRK-B (`dashSym`).
+- 13D/13G (`parseStake`, company.ts): XML filings since Dec 2024 (`SCHEDULE 13D|13G[/A]`, primaryDocument minus `xsl…/`).
+  13G uses an `sch:` prefix (`classPercent`, `reportingPersonBeneficiallyOwnedAggregateNumberOfShares`), 13D a default
+  namespace. A company's submissions also list statements it filed about others: keep only issuer CIK = the company.
+- 13F (`src/data/funds.ts`): ~20 named funds, latest 13F-HR info table (the .xml that isn't primary_doc.xml; values in dollars).
+  CUSIP → ticker via OpenFIGI `POST api.openfigi.com/v3/mapping` (no key: 10 per request, 25 requests/min; BRK/B style),
+  map cached in `.cache/cusips.json`. Wrong CIKs are caught by the `match` regex on the filer name. Link view mode
+  "Funds & activists" uses `network.holders` (fund positions ≥1% of the fund, 13D filers).
+- Earnings season (`seasonStats`, sources.ts): Finnhub earnings calendar in 2-week calls over 91 days → `season.json`.
+- Ports (Phase 5, `src/data/trade.ts`, CORS, live): PortWatch `PortWatch_ports_database` (top 30 by vessel_count_total) and
+  `Daily_Ports_Data` (portcalls, import, export in tonnes; `date` is DateOnly, `portid IN (...)` works).
+- Cargo flights: adsb.lol `/v2/point/<lat>/<lon>/150` per hub (no CORS: relay `/px/adsb`, snapshot `cargo.json`). It returns
+  429 after ~10 quick calls: 3 s apart in the job. airplanes.live refuses without contact; OpenSky's CORS is its own origin.
+  Only all-cargo airline designators (`CARGO_AIRLINES`) are counted. Coverage over mainland China is ~nil.
+- Chokepoint risk (`chokeRisk`): GDELT week points within 500 km (country-centroid points skipped) and orange/red hazards.
+- App icon files are versioned (`icon-512-v2.png` …): Chrome and Windows cache icons by URL, so rename on any logo change.
+
 ## Look (v6, from Luis's Vexto reference)
 - Charcoal `#0c0c0c` page, 22px rounded gradient cards with no header rules, sentence-case titles with a faint ↗.
 - Outfit for UI text, Inter Tight (light, tabular) for numbers; `<Big>` dims the decimals of display numbers.
@@ -109,14 +129,8 @@ The app lives in `fintel-project/`. See its README for running it and the source
   Add map layers once the style has parsed (`styleReady`), not `isStyleLoaded()`, which waits for every tile.
 
 ## Ideas not built yet (roadmap)
-- Shipping, next step: port-level calls (PortWatch `Daily_Ports_Data`) and live vessel positions via a free AIS feed
-  (aisstream.io websocket, free key; would need a small relay).
-- Cargo flights: OpenSky Network / adsb.lol ADS-B positions filtered to cargo operators (FedEx FDX, UPS, Atlas GTI,
-  Cargolux CLX, Kalitta, Cathay/Emirates/Qatar cargo callsigns) as a map layer with hub traffic counts.
+- Shipping, next step: live vessel positions via a free AIS feed (aisstream.io websocket, free key; would need a small relay).
 - Site freshness: GitHub's scheduler only fires the */15 deploy cron every few hours on this repo, so snapshot data
   (quotes on the site, FRED, events…) can be hours old. Fix: an external pinger (e.g. cron-job.org) calling
   `workflow_dispatch` with a fine-grained token Luis creates (Actions: write on this repo only).
-- Events linked to markets: conflict/hazards near a chokepoint shown with its traffic and oil.
 - Admin/health page across Luis's sites (uptime, deploy status, key expiry such as the Canvas token): pinned for later.
-- Earnings-season beat rate across a full season (needs a longer Finnhub window).
-- Institutional holders (13F) and activist stakes (13D/G) as extra edges in the link view.
