@@ -116,7 +116,7 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Cargo flights: adsb.lol `/v2/point/<lat>/<lon>/150` per hub (no CORS: relay `/px/adsb`, snapshot `cargo.json`). It returns
   429 after ~10 quick calls: 3 s apart in the job. airplanes.live refuses without contact; OpenSky's CORS is its own origin.
   Only all-cargo airline designators (`CARGO_AIRLINES`) are counted. Coverage over mainland China is ~nil.
-- Chokepoint risk (`chokeRisk`): GDELT week points within 500 km (country-centroid points skipped) and orange/red hazards.
+- Chokepoint risk (`chokeRisk`): violent GDELT week points (CAMEO 18–20, not country centroids) within 250 km, flagged at 3+, plus orange/red hazards.
 - App icon files are versioned (`icon-512-v2.png` …): Chrome and Windows cache icons by URL, so rename on any logo change.
 
 ## Look (v6, from Luis's Vexto reference)
