@@ -155,7 +155,8 @@ export function tidyName(raw: string): string {
 
 // ------------------------------------------------------------------ Schedules 13D / 13G (XML since Dec 2024)
 /** Tag lookups that ignore the namespace prefix (13G files use sch:, 13D files a default namespace). */
-const xv = (x: string, tag: string) => x.match(new RegExp(`<(?:\\w+:)?${tag}>\\s*([^<]*)<`, 'i'))?.[1].trim() ?? '';
+const ENT: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#39': "'" };
+const xv = (x: string, tag: string) => (x.match(new RegExp(`<(?:\\w+:)?${tag}>\\s*([^<]*)<`, 'i'))?.[1].trim() ?? '').replace(/&(amp|lt|gt|quot|apos|#39);/g, (_, e: string) => ENT[e]);
 const xblocks = (x: string, tag: string) => x.match(new RegExp(`<(?:\\w+:)?${tag}>[\\s\\S]*?</(?:\\w+:)?${tag}>`, 'gi')) ?? [];
 const usDate = (d: string) => { const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? `${m[3]}-${m[1]}-${m[2]}` : d; };
 /** Parse one 13D/13G primary_doc.xml. Returns null when it's about another issuer (the company may be the filer). */

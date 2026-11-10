@@ -33,7 +33,9 @@ export const FUNDS: FundDef[] = [
 
 export interface Holding { cusip: string; issuer: string; t: string | null; value: number; shares: number; pct: number }
 export interface Fund { cik: string; name: string; style: FundDef['style']; period: string; filed: string; total: number; positions: number; holdings: Holding[]; link: string }
-export interface FundsData { funds: Fund[]; errors: string[] }
+export interface FundsData { funds: Fund[]; errors: string[]; v?: number }
+/** Bumped when the way funds.json is built changes, so the job rebuilds it at once instead of waiting a day. */
+export const FUNDS_V = 2;
 
 const tag = (x: string, t: string) => x.match(new RegExp(`<(?:\\w+:)?${t}>\\s*([^<]*)<`, 'i'))?.[1].trim() ?? '';
 /** Sum an information table by CUSIP (one company can be listed under several managers); options are left out. */

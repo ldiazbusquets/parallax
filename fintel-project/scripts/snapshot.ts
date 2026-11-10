@@ -8,7 +8,7 @@ import { chartQuotes, chartLive, ohlcSnapName, SNAP_FILES } from '../src/data/ya
 import { ecoCalendar, govYields } from '../src/data/global';
 import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreener, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
 import { fetchCargo } from '../src/data/trade';
-import { figiTickers, FUNDS, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
+import { figiTickers, FUNDS, FUNDS_V, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
 import { unzipSync, strFromU8 } from 'fflate';
 import { parseGdeltExport, summariseWindow, type Ev } from '../src/data/events';
 import { fredMany, DAILY_IDS, MACRO_IDS, FRED_SINCE } from '../src/data/fred';
@@ -358,7 +358,7 @@ async function main() {
     await step('funds', async () => {
       // 13F filings change once a quarter: check daily for a newer one; CUSIP → ticker map is kept in .cache
       const old = await readSnap<FundsData>('funds.json');
-      if (old && Date.now() - old.generated < 20 * 3600_000) return 'cached (daily)';
+      if (old && old.data.v === FUNDS_V && Date.now() - old.generated < 20 * 3600_000) return 'cached (daily)';
       const cus = await readCache<Record<string, string | null>>('cusips-v2.json', {});
       const raw: { def: (typeof FUNDS)[number]; r: Awaited<ReturnType<typeof latest13F>> }[] = [], errors: string[] = [];
       for (const def of FUNDS) { try { raw.push({ def, r: await latest13F(def) }); } catch (e) { errors.push(`${def.name}: ${(e as Error).message}`); log('  13F', def.name, (e as Error).message); } }
@@ -366,7 +366,7 @@ async function main() {
       if (need.length) { try { Object.assign(cus, await figiTickers(need.slice(0, 600))); } catch (e) { log('  openfigi', (e as Error).message); } await writeCache('cusips-v2.json', cus); }
       const funds: Fund[] = raw.map(({ def, r }) => ({ cik: def.cik, name: def.name, style: def.style, period: r.period, filed: r.filed, positions: r.rows.length, link: r.link, ...shapeHoldings(r.rows, cus) }));
       if (!funds.length) throw new Error(errors.join('; '));
-      await save('funds.json', { funds, errors } satisfies FundsData);
+      await save('funds.json', { funds, errors, v: FUNDS_V } satisfies FundsData);
       return `${funds.length}/${FUNDS.length} funds, ${need.length} new CUSIPs mapped · ${funds.map((f) => f.name.split(' ')[0] + ' ' + f.period).slice(0, 4).join(', ')}…`;
     }, 6 * 60_000);
   }
