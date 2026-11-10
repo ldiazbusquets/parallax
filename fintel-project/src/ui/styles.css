@@ -622,3 +622,6 @@ details.pnote > div { margin-top: 6px; max-width: 70ch; }
 .evlegend .win button { border: 0; background: transparent; padding: 3px 9px; backdrop-filter: none; }
 .evlegend .win button.on { background: #ececec; color: #111; }
 .cev-h .warm { color: var(--accent); }
+
+/* logo: silver-blue bars (see App.tsx), silver wordmark */
+button.brand > span { background: linear-gradient(180deg, #f4f6f8 0%, #c9d1d8 55%, #9aa6b1 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
