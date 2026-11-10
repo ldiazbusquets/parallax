@@ -1,0 +1,357 @@
+﻿2026-11-10T05:49:26.6087775Z Current runner version: '2.338.2'
+2026-11-10T05:49:26.6113439Z ##[group]Runner Image Provisioner
+2026-11-10T05:49:26.6114334Z Hosted Compute Agent
+2026-11-10T05:49:26.6115116Z Version: 20261028.624
+2026-11-10T05:49:26.6115791Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-10T05:49:26.6116624Z Build Date: 2026-10-28T21:51:42Z
+2026-11-10T05:49:26.6117379Z Worker ID: {35e609ed-ad51-4dbc-a866-736598c0c8e7}
+2026-11-10T05:49:26.6118452Z Region: eastus2
+2026-11-10T05:49:26.6119213Z Cloud: Azure
+2026-11-10T05:49:26.6119788Z ##[endgroup]
+2026-11-10T05:49:26.6121479Z ##[group]Operating System
+2026-11-10T05:49:26.6122180Z Ubuntu
+2026-11-10T05:49:26.6122798Z 24.04.5
+2026-11-10T05:49:26.6123394Z LTS
+2026-11-10T05:49:26.6123931Z ##[endgroup]
+2026-11-10T05:49:26.6124489Z ##[group]Runner Image
+2026-11-10T05:49:26.6125221Z Image: ubuntu-24.04
+2026-11-10T05:49:26.6125847Z Version: 20261101.360.1
+2026-11-10T05:49:26.6127173Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-10T05:49:26.6129390Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+2026-11-10T05:49:26.6130457Z ##[endgroup]
+2026-11-10T05:49:26.6131768Z ##[group]GITHUB_TOKEN Permissions
+2026-11-10T05:49:26.6133949Z Contents: read
+2026-11-10T05:49:26.6134654Z Metadata: read
+2026-11-10T05:49:26.6135445Z Packages: read
+2026-11-10T05:49:26.6136285Z ##[endgroup]
+2026-11-10T05:49:26.6139217Z Secret source: Actions
+2026-11-10T05:49:26.6140533Z Cache mode: write
+2026-11-10T05:49:26.6141974Z Prepare workflow directory
+2026-11-10T05:49:26.6479745Z Prepare all required actions
+2026-11-10T05:49:26.6527171Z Getting action download info
+2026-11-10T05:49:26.8438985Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-10T05:49:26.9585435Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-11-10T05:49:27.1487784Z Complete job name: p
+2026-11-10T05:49:27.2364652Z ##[group]Run actions/checkout@v4
+2026-11-10T05:49:27.2365558Z with:
+2026-11-10T05:49:27.2366033Z   repository: ldiazbusquets/parallax
+2026-11-10T05:49:27.2370235Z   token: ***
+2026-11-10T05:49:27.2370688Z   ssh-strict: true
+2026-11-10T05:49:27.2371184Z   ssh-user: git
+2026-11-10T05:49:27.2371648Z   persist-credentials: true
+2026-11-10T05:49:27.2372150Z   clean: true
+2026-11-10T05:49:27.2372609Z   sparse-checkout-cone-mode: true
+2026-11-10T05:49:27.2373141Z   fetch-depth: 1
+2026-11-10T05:49:27.2373585Z   fetch-tags: false
+2026-11-10T05:49:27.2374045Z   show-progress: true
+2026-11-10T05:49:27.2374501Z   lfs: false
+2026-11-10T05:49:27.2374923Z   submodules: false
+2026-11-10T05:49:27.2375382Z   set-safe-directory: true
+2026-11-10T05:49:27.2375903Z   allow-unsafe-pr-checkout: false
+2026-11-10T05:49:27.2376702Z ##[endgroup]
+2026-11-10T05:49:27.5020135Z Syncing repository: ldiazbusquets/parallax
+2026-11-10T05:49:27.5023470Z ##[group]Getting Git version info
+2026-11-10T05:49:27.5025045Z Working directory is '/home/runner/work/parallax/parallax'
+2026-11-10T05:49:27.5027447Z [command]/usr/bin/git version
+2026-11-10T05:49:27.5125940Z git version 2.56.0
+2026-11-10T05:49:27.5155237Z ##[endgroup]
+2026-11-10T05:49:27.5169080Z Temporarily overriding HOME='/home/runner/work/_temp/c9fab7e4-d3b5-41b5-99e6-795eb137c326' before making global git config changes
+2026-11-10T05:49:27.5172340Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-10T05:49:27.5175337Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/parallax/parallax
+2026-11-10T05:49:27.5240301Z Deleting the contents of '/home/runner/work/parallax/parallax'
+2026-11-10T05:49:27.5245943Z ##[group]Initializing the repository
+2026-11-10T05:49:27.5250570Z [command]/usr/bin/git init /home/runner/work/parallax/parallax
+2026-11-10T05:49:27.5367373Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-10T05:49:27.5369646Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-10T05:49:27.5371749Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-10T05:49:27.5373111Z hint: call:
+2026-11-10T05:49:27.5373860Z hint:
+2026-11-10T05:49:27.5374847Z hint: 	git config --global init.defaultBranch <name>
+2026-11-10T05:49:27.5376032Z hint:
+2026-11-10T05:49:27.5377105Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-10T05:49:27.5379055Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-10T05:49:27.5380539Z hint:
+2026-11-10T05:49:27.5381348Z hint: 	git branch -m <name>
+2026-11-10T05:49:27.5382266Z hint:
+2026-11-10T05:49:27.5383439Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-10T05:49:27.5385280Z Initialized empty Git repository in /home/runner/work/parallax/parallax/.git/
+2026-11-10T05:49:27.5399541Z [command]/usr/bin/git remote add origin https://github.com/ldiazbusquets/parallax
+2026-11-10T05:49:27.5442076Z ##[endgroup]
+2026-11-10T05:49:27.5443641Z ##[group]Disabling automatic garbage collection
+2026-11-10T05:49:27.5446335Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-10T05:49:27.5483676Z ##[endgroup]
+2026-11-10T05:49:27.5485152Z ##[group]Setting up auth
+2026-11-10T05:49:27.5491151Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T05:49:27.5531736Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T05:49:27.5963818Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T05:49:27.6010782Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T05:49:27.6286272Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T05:49:27.6335282Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T05:49:27.6609458Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-10T05:49:27.6662531Z ##[endgroup]
+2026-11-10T05:49:27.6663761Z ##[group]Fetching the repository
+2026-11-10T05:49:27.6682252Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +8164a82c6ddf60b06beb811667fb8611a7885ad2:refs/remotes/origin/probe-tmp
+2026-11-10T05:49:27.8901527Z From https://github.com/ldiazbusquets/parallax
+2026-11-10T05:49:27.8903301Z  * [new ref]         8164a82c6ddf60b06beb811667fb8611a7885ad2 -> origin/probe-tmp
+2026-11-10T05:49:27.8907158Z ##[endgroup]
+2026-11-10T05:49:27.8908476Z ##[group]Determining the checkout info
+2026-11-10T05:49:27.8909646Z ##[endgroup]
+2026-11-10T05:49:27.8916398Z [command]/usr/bin/git sparse-checkout disable
+2026-11-10T05:49:27.8978816Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-10T05:49:27.9019829Z ##[group]Checking out the ref
+2026-11-10T05:49:27.9025362Z [command]/usr/bin/git checkout --progress --force -B probe-tmp refs/remotes/origin/probe-tmp
+2026-11-10T05:49:27.9098578Z Switched to a new branch 'probe-tmp'
+2026-11-10T05:49:27.9104225Z branch 'probe-tmp' set up to track 'origin/probe-tmp'.
+2026-11-10T05:49:27.9111132Z ##[endgroup]
+2026-11-10T05:49:27.9162778Z [command]/usr/bin/git log -1 --format=%H
+2026-11-10T05:49:27.9197316Z 8164a82c6ddf60b06beb811667fb8611a7885ad2
+2026-11-10T05:49:27.9515604Z ##[group]Run actions/setup-node@v4
+2026-11-10T05:49:27.9516268Z with:
+2026-11-10T05:49:27.9516729Z   node-version: 20
+2026-11-10T05:49:27.9517224Z   always-auth: false
+2026-11-10T05:49:27.9517927Z   check-latest: false
+2026-11-10T05:49:27.9522087Z   token: ***
+2026-11-10T05:49:27.9522571Z ##[endgroup]
+2026-11-10T05:49:28.1026068Z Attempting to download 20...
+2026-11-10T05:49:28.1181744Z (node:2326) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-10T05:49:28.1184083Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-10T05:49:28.4953768Z Acquiring 20.20.2 - x64 from https://github.com/actions/node-versions/releases/download/20.20.2-23521894959/node-20.20.2-linux-x64.tar.gz
+2026-11-10T05:49:28.8945067Z Extracting ...
+2026-11-10T05:49:28.9085334Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/a7e95fc0-7509-4cc2-9217-3ae916fc1b6d -f /home/runner/work/_temp/b6b18cb2-ccaa-4b80-91fb-30cc311bd161
+2026-11-10T05:49:29.9429997Z Adding to the cache ...
+2026-11-10T05:49:31.5246733Z ##[group]Environment details
+2026-11-10T05:49:31.7743299Z node: v20.20.2
+2026-11-10T05:49:31.7743811Z npm: 10.8.2
+2026-11-10T05:49:31.7744189Z yarn: 1.22.22
+2026-11-10T05:49:31.7745039Z ##[endgroup]
+2026-11-10T05:49:31.7996513Z ##[group]Run node probe.mjs
+2026-11-10T05:49:31.7996876Z [36;1mnode probe.mjs[0m
+2026-11-10T05:49:31.8023075Z shell: /usr/bin/bash -e {0}
+2026-11-10T05:49:31.8023358Z env:
+2026-11-10T05:49:31.8023824Z   SEC_USER_AGENT: ***
+2026-11-10T05:49:31.8024079Z ##[endgroup]
+2026-11-10T05:49:31.9828572Z 
+2026-11-10T05:49:31.9844488Z === AAPL 13D/G forms
+2026-11-10T05:49:31.9849350Z [["SCHEDULE 13G","2026-04-29","0002100119-26-000139","xslSCHEDULE_13G_X02/primary_doc.xml"],["SCHEDULE 13G/A","2026-03-26","0000102909-26-000630","xslSCHEDULE_13G_X02/primary_doc.xml"],["SCHEDULE 13G/A","2025-07-29","0000932471-25-000778","xslSCHEDULE_13G_X01/primary_doc.xml"],["SC 13G/A","2024-02-14","0001193125-24-036431","d751537dsc13ga.htm"],["SC 13G/A","2024-02-13","0001104659-24-020009","tv0017-appleinc.htm"],["SC 13G/A","2024-02-12","0001086364-24-006980","us0378331005_021224.txt"],["SC 13G/A","2023-02-14","0001193125-23-038262","d382361dsc13ga.htm"],["SC 13G/A","2023-02-09","0001104659-23-015055","tv0017-appleinc.htm"],["SC 13G/A","2023-02-07","0001306550-23-008266","us0378331005_020723.txt"],["SC 13G/A","2022-02-09","0001104659-22-016224","tv0011-appleinc.htm"],["SC 13G/A","2022-02-01","0000834237-22-004076","us0378331005_012822.txt"],["SC 13G/A","2021-02-16","0001193125-21-044816","d107461dsc13ga.htm"]]
+2026-11-10T05:49:32.2027035Z 
+2026-11-10T05:49:32.2028112Z === 13G primary doc
+2026-11-10T05:49:32.2030439Z {"form":"SCHEDULE 13G","doc":"xslSCHEDULE_13G_X01/primary_doc.xml","files":["0001045810-26-000062-index-headers.html","0001045810-26-000062-index.html","0001045810-26-000062.txt","primary_doc.xml"]}
+2026-11-10T05:49:32.2033366Z <?xml version="1.0" encoding="UTF-8"?><sch:edgarSubmission xmlns:sch="http://www.sec.gov/edgar/schedule13g" xmlns:com="http://www.sec.gov/edgar/common">
+2026-11-10T05:49:32.2034964Z   <!-- Generated by Workiva -->
+2026-11-10T05:49:32.2035756Z   <sch:schemaVersion>X0202</sch:schemaVersion>
+2026-11-10T05:49:32.2036488Z <sch:headerData>
+2026-11-10T05:49:32.2037279Z     <sch:submissionType>SCHEDULE 13G</sch:submissionType>
+2026-11-10T05:49:32.2038217Z     <sch:filerInfo>
+2026-11-10T05:49:32.2045022Z       <sch:filer>
+2026-11-10T05:49:32.2045817Z         <sch:filerCredentials>
+2026-11-10T05:49:32.2046447Z           <sch:cik>0001045810</sch:cik>
+2026-11-10T05:49:32.2047008Z           <sch:ccc>XXXXXXXX</sch:ccc>
+2026-11-10T05:49:32.2047962Z         </sch:filerCredentials>
+2026-11-10T05:49:32.2049564Z       </sch:filer>
+2026-11-10T05:49:32.2050421Z       <sch:liveTestFlag>LIVE</sch:liveTestFlag>
+2026-11-10T05:49:32.2050882Z 
+2026-11-10T05:49:32.2050910Z 
+2026-11-10T05:49:32.2050928Z 
+2026-11-10T05:49:32.2051120Z     </sch:filerInfo>
+2026-11-10T05:49:32.2051576Z   </sch:headerData>
+2026-11-10T05:49:32.2052001Z   <sch:formData>
+2026-11-10T05:49:32.2052438Z     <sch:coverPageHeader>
+2026-11-10T05:49:32.2053295Z       <sch:securitiesClassTitle>Class A Ordinary Shares</sch:securitiesClassTitle>
+2026-11-10T05:49:32.2054678Z       <sch:eventDateRequiresFilingThisStatement>07/13/2026</sch:eventDateRequiresFilingThisStatement>
+2026-11-10T05:49:32.2056219Z       <sch:issuerInfo>
+2026-11-10T05:49:32.2056780Z         <sch:issuerCik>0001513845</sch:issuerCik>
+2026-11-10T05:49:32.2057806Z         <sch:issuerName>Nebius Group N.V.</sch:issuerName>
+2026-11-10T05:49:32.2058503Z         <sch:issuerCusips>
+2026-11-10T05:49:32.2059156Z           <sch:issuerCusipNumber>N97284108</sch:issuerCusipNumber>
+2026-11-10T05:49:32.2059812Z         </sch:issuerCusips>
+2026-11-10T05:49:32.2060420Z         <sch:issuerPrincipalExecutiveOfficeAddress>
+2026-11-10T05:49:32.2061179Z           <com:street1>Schiphol Boulevard 165</com:street1>
+2026-11-10T05:49:32.2061915Z           <com:city>Schiphol P7</com:city>
+2026-11-10T05:49:32.2062571Z           <com:stateOrCountry>P7</com:stateOrCountry>
+2026-11-10T05:49:32.2063255Z           <com:zipCode>1118 BG</com:zipCode>
+2026-11-10T05:49:32.2063926Z         </sch:issuerPrincipalExecutiveOfficeAddress>
+2026-11-10T05:49:32.2064530Z       </sch:issuerInfo>
+2026-11-10T05:49:32.2065454Z       <sch:designateRulesPursuantThisScheduleFiled>
+2026-11-10T05:49:32.2066330Z         <sch:designateRulePursuantThisScheduleFiled>Rule 13d-1(c)</sch:designateRulePursuantThisScheduleFiled>
+2026-11-10T05:49:32.2066991Z       </sch:designateRulesPursuantThisScheduleFiled>
+2026-11-10T05:49:32.2067334Z     </sch:coverPageHeader>
+2026-11-10T05:49:32.2068061Z     <sch:coverPageHeaderReportingPersonDetails>
+2026-11-10T05:49:32.2068325Z 
+2026-11-10T05:49:32.2068340Z 
+2026-11-10T05:49:32.2068631Z       <sch:reportingPersonName>NVIDIA Corporation</sch:reportingPersonName>
+2026-11-10T05:49:32.2069197Z       <sch:citizenshipOrOrganization>DE</sch:citizenshipOrOrganization>
+2026-11-10T05:49:32.2069703Z       <sch:reportingPersonBeneficiallyOwnedNumberOfShares>
+2026-11-10T05:49:32.2070161Z         <sch:soleVotingPower>22256412.00</sch:soleVotingPower>
+2026-11-10T05:49:32.2070609Z         <sch:sharedVotingPower>0.00</sch:sharedVotingPower>
+2026-11-10T05:49:32.2071087Z         <sch:soleDispositivePower>22256412.00</sch:soleDispositivePower>
+2026-11-10T05:49:32.2071605Z         <sch:sharedDispositivePower>0.00</sch:sharedDispositivePower>
+2026-11-10T05:49:32.2072079Z       </sch:reportingPersonBeneficiallyOwnedNumberOfShares>
+2026-11-10T05:49:32.2072573Z       <sch:reportingPersonBeneficiallyOwnedAggregateNumberOfShare
+2026-11-10T05:49:32.6376708Z 
+2026-11-10T05:49:32.6377256Z === 13D primary doc (any)
+2026-11-10T05:49:32.6378158Z 0000021344 SCHEDULE 13D/A xslSCHEDULE_13D_X01/primary_doc.xml
+2026-11-10T05:49:32.6379479Z <?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13D" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+2026-11-10T05:49:32.6380440Z   <headerData>
+2026-11-10T05:49:32.6380769Z     <submissionType>SCHEDULE 13D/A</submissionType>
+2026-11-10T05:49:32.6381113Z     <filerInfo>
+2026-11-10T05:49:32.6381366Z       <filer>
+2026-11-10T05:49:32.6381598Z         <filerCredentials>
+2026-11-10T05:49:32.6381925Z           <cik>0000021344</cik>
+2026-11-10T05:49:32.6382216Z           <ccc>XXXXXXXX</ccc>
+2026-11-10T05:49:32.6382499Z         </filerCredentials>
+2026-11-10T05:49:32.6382777Z       </filer>
+2026-11-10T05:49:32.6383050Z       <liveTestFlag>LIVE</liveTestFlag>
+2026-11-10T05:49:32.6383261Z 
+2026-11-10T05:49:32.6383268Z 
+2026-11-10T05:49:32.6383274Z 
+2026-11-10T05:49:32.6383370Z     </filerInfo>
+2026-11-10T05:49:32.6383598Z   </headerData>
+2026-11-10T05:49:32.6383820Z   <formData>
+2026-11-10T05:49:32.6384042Z     <coverPageHeader>
+2026-11-10T05:49:32.6384323Z       <amendmentNo>51</amendmentNo>
+2026-11-10T05:49:32.6384865Z       <securitiesClassTitle>Common Stock, Par Value $1.00 Per Share</securitiesClassTitle>
+2026-11-10T05:49:32.6385411Z       <dateOfEvent>11/07/2025</dateOfEvent>
+2026-11-10T05:49:32.6385814Z       <previouslyFiledFlag>false</previouslyFiledFlag>
+2026-11-10T05:49:32.6386170Z       <issuerInfo>
+2026-11-10T05:49:32.6386443Z         <issuerCIK>0000317540</issuerCIK>
+2026-11-10T05:49:32.6386798Z         <issuerCUSIP>191098102</issuerCUSIP>
+2026-11-10T05:49:32.6387990Z         <issuerName>Coca-Cola Consolidated, Inc.</issuerName>
+2026-11-10T05:49:32.6388376Z         <address>
+2026-11-10T05:49:32.6388789Z           <street1 xmlns="http://www.sec.gov/edgar/common">4100 COCA COLA PLZ</street1>
+2026-11-10T05:49:32.6389563Z           <city xmlns="http://www.sec.gov/edgar/common">Charlotte</city>
+2026-11-10T05:49:32.6390112Z           <stateOrCountry xmlns="http://www.sec.gov/edgar/common">NC</stateOrCountry>
+2026-11-10T05:49:32.6390958Z           <zipCode xmlns="http://www.sec.gov/edgar/common">28211</zipCode>
+2026-11-10T05:49:32.6391428Z         </address>
+2026-11-10T05:49:32.6391746Z       </issuerInfo>
+2026-11-10T05:49:32.6391987Z       <authorizedPersons>
+2026-11-10T05:49:32.6392250Z         <notificationInfo>
+2026-11-10T05:49:32.6392656Z           <personName>Moncia Howard Douglas</personName>
+2026-11-10T05:49:32.6393151Z           <personPhoneNum>(404) 676-2121</personPhoneNum>
+2026-11-10T05:49:32.6393671Z           <personAddress>
+2026-11-10T05:49:32.6394340Z             <street1 xmlns="http://www.sec.gov/edgar/common">The Coca-Cola Company</street1>
+2026-11-10T05:49:32.6395040Z             <street2 xmlns="http://www.sec.gov/edgar/common">One Coca-Cola Plaza</street2>
+2026-11-10T05:49:32.6395678Z             <city xmlns="http://www.sec.gov/edgar/common">Atlanta</city>
+2026-11-10T05:49:32.6396358Z             <stateOrCountry xmlns="http://www.sec.gov/edgar/common">GA</stateOrCountry>
+2026-11-10T05:49:32.6396938Z             <zipCode xmlns="http://www.sec.gov/edgar/common">30313</zipCode>
+2026-11-10T05:49:32.6397317Z           </personAddress>
+2026-11-10T05:49:32.6397931Z         </notificationInfo>
+2026-11-10T05:49:32.6398214Z       </authorizedPersons>
+2026-11-10T05:49:32.6398529Z     </coverPageHeader>
+2026-11-10T05:49:32.6398885Z     <reportingPersons>
+2026-11-10T05:49:32.6399233Z       <reportingPersonInfo>
+2026-11-10T05:49:32.6399614Z         <reportingPersonCIK>0000021344</reportingPersonCIK>
+2026-11-10T05:49:32.6400208Z         <reportingPersonNoCIK>N</reportingPersonNoCIK>
+2026-11-10T05:49:32.6400812Z         <reportingPersonName>THE COCA-COLA COMPANY</reportingPersonName>
+2026-11-10T05:49:32.6401587Z         <memberOfGroup>b</memberOfGroup>
+2026-11-10T05:49:32.6402163Z         <fundType>OO</fundType>
+2026-11-10T05:49:32.6402751Z         <legalProceedings>N</legalProceedings>
+2026-11-10T05:49:32.6403412Z         <citizenshipOrOrganization>DE</citize
+2026-11-10T05:49:32.7582312Z 
+2026-11-10T05:49:32.7582824Z === Berkshire 13F
+2026-11-10T05:49:32.7584260Z {"date":"2026-08-14","report":"2026-06-30","files":["0001193125-26-352200-index-headers.html","0001193125-26-352200-index.html","0001193125-26-352200.txt","56757.xml","primary_doc.xml"]}
+2026-11-10T05:49:32.7586584Z <informationTable xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.sec.gov/edgar/document/thirteenf/informationtable">
+2026-11-10T05:49:32.7587424Z   <infoTable>
+2026-11-10T05:49:32.7588181Z     <nameOfIssuer>ALLY FINL INC</nameOfIssuer>
+2026-11-10T05:49:32.7588616Z     <titleOfClass>COM</titleOfClass>
+2026-11-10T05:49:32.7588961Z     <cusip>02005N100</cusip>
+2026-11-10T05:49:32.7589272Z     <value>577211815</value>
+2026-11-10T05:49:32.7589571Z     <shrsOrPrnAmt>
+2026-11-10T05:49:32.7589909Z       <sshPrnamt>12561737</sshPrnamt>
+2026-11-10T05:49:32.7590367Z       <sshPrnamtType>SH</sshPrnamtType>
+2026-11-10T05:49:32.7590762Z     </shrsOrPrnAmt>
+2026-11-10T05:49:32.7591118Z     <investmentDiscretion>DFND</investmentDiscretion>
+2026-11-10T05:49:32.7591543Z     <otherManager>4</otherManager>
+2026-11-10T05:49:32.7591849Z     <votingAuthority>
+2026-11-10T05:49:32.7592108Z       <Sole>12561737</Sole>
+2026-11-10T05:49:32.7592381Z       <Shared>0</Shared>
+2026-11-10T05:49:32.7592647Z       <None>0</None>
+2026-11-10T05:49:32.7592899Z     </votingAuthority>
+2026-11-10T05:49:32.7593167Z   </infoTable>
+2026-11-10T05:49:32.7593408Z   <infoTable>
+2026-11-10T05:49:32.7593713Z     <nameOfIssuer>ALLY FINL INC</nameOfIssuer>
+2026-11-10T05:49:32.7594110Z     <titleOfClass>COM</titleOfClass>
+2026-11-10T05:49:32.7594855Z     <cusip>02005N100</cusip>
+2026-11-10T05:49:32.7595140Z     <value>128838056</value>
+2026-11-10T05:49:32.7595690Z     <shrsOrPrnAmt>
+2026-11-10T05:49:32.7596126Z       <sshPrnamt>2803875</sshPrnamt>
+2026-11-10T05:49:32.7596723Z       <sshPrnamtType>SH</sshPrnamtType>
+2026-11-10T05:49:32.7597249Z     </shrsOrPrnAmt>
+2026-11-10T05:49:32.7598106Z     <investmentDiscretion>DFND</investmentDiscretion>
+2026-11-10T05:49:32.7598610Z     <otherManager>2,4,11</otherManager>
+2026-11-10T05:49:32.7598938Z     <votingAuthority>
+2026-11-10T05:49:32.7599195Z       <Sole>2803875</Sole>
+2026-11-10T05:49:32.7599422Z       <Shared>0</Shared>
+2026-11-10T05:49:32.7599640Z       <None>0</None>
+2026-11-10T05:49:32.7599853Z     </votingAuthority>
+2026-11-10T05:49:32.7600061Z   </infoTable>
+2026-11-10T05:49:32.7600248Z   <infoTable>
+2026-11-10T05:49:32.7600496Z     <nameOfIssuer>ALLY FINL INC</nameOfIssuer>
+2026-11-10T05:49:32.7601106Z     <titleOfClass>COM</titleOfClass>
+2026-11-10T05:49:32.7601399Z     <cusip>02005N100</cusip>
+2026-11-10T05:49:32.7601632Z     <value>194285790</value>
+2026-11-10T05:49:32.7601858Z     <shrsOrPrnAmt>
+2026-11-10T05:49:32.7602106Z       <sshPrnamt>4228200</sshPrnamt>
+2026-11-10T05:49:32.7602400Z       <sshPrnamtType>SH</sshPrnamtType>
+2026-11-10T05:49:32.7602669Z     </shrsOrPrnAmt>
+2026-11-10T05:49:32.7602953Z     <investmentDiscretion>DFND</investmentDiscretion>
+2026-11-10T05:49:32.7603299Z     <otherManager>4,5</otherManager>
+2026-11-10T05:49:32.7603469Z 
+2026-11-10T05:49:32.9060259Z 
+2026-11-10T05:49:32.9060828Z === OpenFIGI ERROR
+2026-11-10T05:49:32.9061586Z SyntaxError: Unexpected token 'R', "Request ma"... is not valid JSON
+2026-11-10T05:49:33.2288613Z 
+2026-11-10T05:49:33.2289124Z === adsb.lol MEM
+2026-11-10T05:49:33.2292117Z 200 acao=null n=116 cargo=FDX1234,FDX1334,FDX1213,FDX1370,FDX1290,FDX1123,FDX1229,FDX1216,FDX1240,FDX1301,UPS869,FDX1365,FDX1617,FDX1208,FDX1262,UPS915,FDX1267,FDX1299,FDX1678,FDX1058,FDX1230,FDX2374,FDX1295,FDX1220,FDX68,FDX2204,FDX2283,FDX1314,FDX1,FDX115,FDX2361,FDX52,FDX5225,FDX1247,ABX120,FDX1292,FDX1609,UPS871,ABX102,FDX1273,UPS313,UPS891,UPS635,FDX105,UPS1381,FDX2324,UPS9324,FDX58,FDX2639,FDX1900
+2026-11-10T05:49:33.2295756Z {"ac":[
+2026-11-10T05:49:33.2299398Z {"hex":"06a07d","type":"adsb_icao","flight":"QTR51U  ","r":"A7-BBG","t":"B77L","alt_baro":31000,"alt_geom":32100,"gs":484.0,"ias":308,"tas":490,"mach":0.828,"wd":106,"ws":18,"oat":-43,"tat":-11,"track":34.05,"roll":0.00,"mag_heading":34.80,"true_heading":36.06,"baro_rate":0,"geom_rate":0,"squawk":"0536","emergency":"none","category":"A5","nav_qnh":1012.8,"nav_altitude_mcp":31008,"nav_heading":35.16,"lat":36.037996,"lon":-94.812012,"nic":8,"rc":186,"seen_pos":0.191,"version":2,"nic_baro":1,"nac_p":9,"nac_v":1,"sil":3,"sil_type":"perhour","gva":2,"sda":2,"alert":0,"spi":0,"mlat":[],"tisb
+2026-11-10T05:49:33.4480834Z 
+2026-11-10T05:49:33.4481293Z === airplanes.live MEM
+2026-11-10T05:49:33.4481667Z 403 acao=null n=0 cargo=
+2026-11-10T05:49:33.4482733Z {"error": "Please contact us at contact@airplanes.live. Your email MUST include any links, a description of the project, and any information you deem appropriate."}
+2026-11-10T05:49:33.7467128Z 
+2026-11-10T05:49:33.7467597Z === adsb.fi MEM
+2026-11-10T05:49:33.7470583Z 200 acao=null n=116 cargo=FDX1234,FDX1334,FDX1213,FDX1370,FDX1290,FDX1123,FDX1229,FDX1216,FDX1240,FDX1301,UPS869,FDX1365,FDX1617,FDX1208,FDX1262,UPS915,FDX1267,FDX1299,FDX1678,FDX1058,FDX1230,FDX2374,FDX1295,FDX1220,FDX68,FDX2204,FDX1314,FDX2283,FDX1,FDX115,FDX2361,FDX52,FDX5225,FDX1247,ABX120,FDX1292,FDX1609,UPS871,ABX102,FDX1273,UPS313,UPS891,UPS635,FDX105,UPS1381,FDX2324,UPS9324,FDX58,FDX2639,FDX1900
+2026-11-10T05:49:33.7472890Z {"now": 1794289772.000
+2026-11-10T05:49:33.7473153Z ,"aircraft":[
+2026-11-10T05:49:33.7475748Z {"hex":"06a07d","type":"adsb_icao","flight":"QTR51U  ","r":"A7-BBG","t":"B77L","desc":"BOEING 777-200LR","alt_baro":31000,"alt_geom":32100,"gs":484.0,"ias":308,"tas":490,"mach":0.828,"wd":106,"ws":18,"oat":-43,"tat":-11,"track":34.05,"roll":0.00,"mag_heading":34.80,"true_heading":36.06,"baro_rate":0,"geom_rate":0,"squawk":"0536","emergency":"none","category":"A5","nav_qnh":1012.8,"nav_altitude_mcp":31008,"nav_heading":35.16,"lat":36.036301,"lon":-94.813385,"nic":8,"rc":186,"seen_pos":0.090,"version":2,"nic_baro":1,"nac_p":9,"nac_v":1,"sil":3,"sil_type":"per
+2026-11-10T05:49:34.2637111Z 
+2026-11-10T05:49:34.2637649Z === opensky
+2026-11-10T05:49:34.2639161Z 200 acao=https://opensky-network.org n=24 cargo=FDX1230,FDX5225,FDX1,FDX1220,FDX68,FDX52,FDX1295,FDX115,FDX1314,FDX1292,FDX2374,FDX2204,FDX1299,FDX1267,FDX1058,FDX2283,FDX2200,FDX2361,FDX1262
+2026-11-10T05:49:34.2643333Z {"time":1794289766,"states":[["ac247a","SWA2717 ","United States",1794289765,1794289766,-89.985,34.9345,548.64,false,97.76,359.1,-5.53,null,609.6,"5103",false,0],["a841f5","FDX1230 ","United States",1794289766,1794289766,-90.1573,35.1325,2606.04,false,132.41,129.01,-4.88,null,2720.34,"5241",false,0],["abbe23","FDX5225 ","United States",1794289766,1794289766,-89.5458,35.3604,3863.34,false,176.1,226.18,-6.83,null,4038.6,"0707",false,0],["ac148f","FDX1    ","United States",1794289765,1794289765,-89.8638,34.919,754.38,false,109.06,179.73,-4.55,null,815.34,"7317",false,0],["a13b1e","FDX1220 ","Unit
+2026-11-10T05:49:35.4500848Z 
+2026-11-10T05:49:35.4501575Z === PortWatch services
+2026-11-10T05:49:35.4514441Z 2018_BP_Homepage_Indicator, Aggregation_of_Kenya_ATMs_all_to_Kenya_District_Boundaries_2016_2, All_Forestation_Indexes_with_boundaries, ATM_NY_State2, Average_nonlife_insurance_premium_to_GDP___map_layer, Bilateral_Trade_EG, Bilateral_Trade_LCT, climate_scenarios_climate_risk, country_meta, country_meta_single_page, country_meta_single_page_long, Country_Polygons, country_vars, Daily_Regional_Data, Daily_Trade_Data_TEST4, Daily_Trade_Data_WLD, disruptions_ExportFeatures, disruptions_view, disruptions_with_ports, events_wp_2, Floods_riverine_people_all, FR24_airports, GAA_selector, Global_Assessment_Accounts_Melted_Layer, Global_Shipping_Routes, green_bonds, green_bonds_issuance_by_country, green_bonds_issuance_by_country_SM, IAM_CID_melted, IMF_Country_Boundaries, Indicator 15 Fossil Fuel Subsidies, Indicator 7_2_CA_timeline, Indicator 7_2_EG, Indicator_1_1_annual, Indicator_1_1_melted_new, Indicator_1_1_melted_new_CountryView, Indicator_1_1_quarterly, Indicator_1_1_quarterly_selector, Indicator_1_1A_SM, Indicator_1_1Q, Indicator_1_1Q_SM, Indicator_1_2_Greenhouse_gas_emissions_Greenhouse_gas_(GHS)_national_inventories_by_source, Indicator_1_2_indices_table, Indicator_1_2_indices_table_SM, Indicator_1_2_melted_new, Indicator_1_2_melted_new_CountryView, Indicator_1_2_melted_transposed, Indicator_1_2_melted_transposed_interp_sameSeries, Indicator_1_2_selector, Indicator_10_Green_Finance, Indicator_10_melted_new, Indicator_10_SM, Indicator_11_1_melted_new, Indicator_11_1_melted_new_CountryView, Indicator_11_1_Physical_Risks_Climate_related_disasters_frequency, Indicator_11_2_simple, Indicator_11_3___Map_Layer, Indicator_11_3_Physical_Risks__Index_for_Risk_Management, Indicator_11_3_SF, Indicator_11_3_simple, Indicator_13_dashboard, Indicator_13_Environmental_Taxes_new, Indicator_13_melted_new, Indicator_13_melted_new_CountryView, Indicator_14_Expenditure_on_Environmental_Protection, Indicator_14_melted_new_CountryView, Indicator_15_melted_new, Indicator_16_1, Indicator_16_1_dashboard, Indicator_16_1_melted_new, Indicator_16_2, Indicator_16_2_dashboard, Indicator_16_2_melted_new, Indicator_16_4, Indicator_16_4_melted_new, Indicator_16_4_selector, Indicator_16_6_dashboard, Indicator_17_pivoted, Indicator_18, Indicator_18_scenarios_selector, Indicator_18_selector, Indicator_2_Carbon_Emission_per_unit_of_Output, Indicator_2_melted_new, Indicator_2_SM, Indicator_3_1_Climate_Indicators_Annual_Mean_Global_Surface_Temperature, Indicator_3_1_dashboard, Indicator_3_1_se
+2026-11-10T05:49:35.4652854Z 
+2026-11-10T05:49:35.4654559Z === Daily_Ports_Data fields
+2026-11-10T05:49:35.4658071Z date, year, month, day, portid, portname, country, ISO3, portcalls_container, portcalls_dry_bulk, portcalls_general_cargo, portcalls_roro, portcalls_tanker, portcalls_cargo, portcalls, import_container, import_dry_bulk, import_general_cargo, import_roro, import_tanker, import_cargo, import, export_container, export_dry_bulk, export_general_cargo, export_roro, export_tanker, export_cargo, export, ObjectId
+2026-11-10T05:50:30.5892938Z 
+2026-11-10T05:50:30.5893405Z === Daily_Ports_Data sample
+2026-11-10T05:50:30.5894502Z {"error":{"code":400,"message":"Cannot perform query. Invalid query parameters.","details":["Unable to perform query. Please check your parameters."]}}
+2026-11-10T05:50:30.6402447Z 
+2026-11-10T05:50:30.6402943Z === Ports db fields
+2026-11-10T05:50:30.6406181Z portid, portname, country, ISO3, continent, fullname, lat, lon, vessel_count_total, vessel_count_container, vessel_count_dry_bulk, vessel_count_general_cargo, vessel_count_RoRo, vessel_count_tanker, industry_top1, industry_top2, industry_top3, share_country_maritime_import, share_country_maritime_export, LOCODE, pageid, countrynoaccents, ObjectId
+2026-11-10T05:50:31.5214173Z 
+2026-11-10T05:50:31.5214687Z === Ports db top
+2026-11-10T05:50:31.5228211Z {"objectIdFieldName":"ObjectId","uniqueIdField":{"name":"ObjectId","isSystemMaintained":true},"globalIdFieldName":"","geometryType":"esriGeometryPoint","spatialReference":{"wkid":102100,"latestWkid":3857},"fields":[{"name":"portid","type":"esriFieldTypeString","alias":"portid","sqlType":"sqlTypeNVarchar","length":4000,"domain":null,"defaultValue":null},{"name":"portname","type":"esriFieldTypeString","alias":"portname","sqlType":"sqlTypeNVarchar","length":4000,"domain":null,"defaultValue":null},{"name":"country","type":"esriFieldTypeString","alias":"country","sqlType":"sqlTypeNVarchar","length":4000,"domain":null,"defaultValue":null},{"name":"ISO3","type":"esriFieldTypeString","alias":"ISO3","sqlType":"sqlTypeNVarchar","length":4000,"domain":null,"defaultValue":null},{"name":"continent","type":"esriFieldTypeString","alias":"continent","sqlType":"sqlTypeNVarchar","length":4000,"domain":null,"defaultValue":null},{"name":"fullname","type":"esriFieldTypeString","alias":"fullname","sqlType":"sqlTypeNVarchar","length":4000,"domain":null,"defaultValue":null},{"name":"lat","type":"esriFieldTypeDouble","alias":"lat","sqlType":"sqlTypeFloat","domain":null,"defaultValue":null},{"name":"lon","type":"esriFieldTypeDouble","alias":"lon","sqlType":"sqlTypeFloat","domain":null,"defaultValue":null},{"name":"vessel_count_total","type":"esriFieldTypeInteger","alias":"vessel_count_total","sqlType":"sqlTypeInteger","domain":null,"defaultValue":null},{"name":"vessel_count_container","type":"esriFieldTypeDouble","alias":"vessel_count_container","sqlType":"sqlTypeFloat","domain":null,"defaultValue":null},{"name":"vessel_count_dry_bulk","type":"esriFieldTypeDouble","alias":"vessel_count_dry_bulk","sqlType":"sqlTypeFloat","domain":null,"defaultValue":null},{"name":"vessel_count_general_cargo","type":"esriFieldTypeDouble","alias":"vessel_count_general_cargo","sqlType":"sqlTypeFloat","domain":null,"defaultValue":null},{"name":"vessel_count_RoRo","type":"esriFieldTypeDouble","alias":"vessel_count_RoRo","sqlType":"sqlTypeFloat","domain":null,"defaultValue":null},{"name":"vessel_count_tanker","type":"esriFieldTypeDouble","alias":"vessel_count_tanker","sqlType":"sqlTypeFloat","domain":null,"defaultValue":null},{"name":"industry_top1","type":"esriFieldTypeString","alias":"industry_top1","sqlType":"sqlTypeNVarchar","length":4000,"domain":null,"defaultValue":null},{"name":"industry_top2","type":"esriFieldTypeString","alias":"industry_top2","sqlType":"sqlTypeNVarchar","length":4000,"domain":nu
+2026-11-10T05:50:31.5908642Z 
+2026-11-10T05:50:31.5908870Z === Ports count
+2026-11-10T05:50:31.5910532Z {"count":2065,"extent":{"xmin":-19938795.552655593,"ymin":-7325263.707866332,"xmax":19966590.033371203,"ymax":11494724.383901604,"spatialReference":{"wkid":102100,"latestWkid":3857}}}
+2026-11-10T05:50:31.6063229Z Post job cleanup.
+2026-11-10T05:50:31.7341037Z (node:2414) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-10T05:50:31.7342615Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-10T05:50:31.7586261Z Post job cleanup.
+2026-11-10T05:50:31.8513627Z [command]/usr/bin/git version
+2026-11-10T05:50:31.8561393Z git version 2.56.0
+2026-11-10T05:50:31.8639100Z Temporarily overriding HOME='/home/runner/work/_temp/28c46dd9-9ab9-46ca-b953-d7ebfda63474' before making global git config changes
+2026-11-10T05:50:31.8640921Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-10T05:50:31.8642151Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/parallax/parallax
+2026-11-10T05:50:31.8685448Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T05:50:31.8751777Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T05:50:31.9042801Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T05:50:31.9072185Z http.https://github.com/.extraheader
+2026-11-10T05:50:31.9123245Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-10T05:50:31.9168409Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T05:50:31.9437692Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T05:50:31.9484347Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T05:50:31.9899682Z Cleaning up orphan processes
+2026-11-10T05:50:32.0349981Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
