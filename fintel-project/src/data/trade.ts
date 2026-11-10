@@ -15,11 +15,13 @@ export interface Port { id: string; name: string; country: string; iso3: string;
 export interface PortDay { d: string; calls: number; imp: number; exp: number }
 export interface PortsData { ports: Port[]; daily: Record<string, PortDay[]>; last: string }
 interface ArcRows<T> { features?: { attributes: T }[]; exceededTransferLimit?: boolean; error?: { message?: string } }
-async function arc<T>(service: string, params: Record<string, string>): Promise<T[]> {
+/** ArcGIS query, paged 1,000 rows at a time up to `max` rows. Daily_Ports_Data is a very large table: each page
+ *  can take 20–30 s, which is why the website gets ports from the snapshot job rather than live. */
+async function arc<T>(service: string, params: Record<string, string>, max = 20_000): Promise<T[]> {
   const out: T[] = [];
-  for (let offset = 0; offset < 20_000; ) {
-    const qs = new URLSearchParams({ f: 'json', returnGeometry: 'false', resultOffset: String(offset), resultRecordCount: '1000', ...params });
-    const j = await getJSON<ArcRows<T>>(`${PW}/${service}/FeatureServer/0/query?${qs}`, { timeout: 30000 });
+  for (let offset = 0; offset < max; ) {
+    const qs = new URLSearchParams({ f: 'json', returnGeometry: 'false', resultOffset: String(offset), resultRecordCount: String(Math.min(1000, max - offset)), ...params });
+    const j = await getJSON<ArcRows<T>>(`${PW}/${service}/FeatureServer/0/query?${qs}`, { timeout: 90000 });
     if (j.error) throw new Error('PortWatch: ' + (j.error.message || 'query failed'));
     const rows = (j.features ?? []).map((f) => f.attributes);
     out.push(...rows);
@@ -53,16 +55,17 @@ export function portWeek(s: PortDay[] | undefined, end: string, key: 'calls' | '
   return w.length >= 5 ? w.reduce((a, x) => a + x[key], 0) / w.length : null;
 }
 export async function fetchPorts(n = 30): Promise<PortsData> {
-  const db = await arc<PortRow>('PortWatch_ports_database', { where: '1=1', outFields: 'portid,portname,country,ISO3,lat,lon,vessel_count_total,vessel_count_container,vessel_count_tanker', orderByFields: 'vessel_count_total DESC', resultRecordCount: String(n) }).then((r) => r.slice(0, n));
+  const db = await arc<PortRow>('PortWatch_ports_database', { where: '1=1', outFields: 'portid,portname,country,ISO3,lat,lon,vessel_count_total,vessel_count_container,vessel_count_tanker', orderByFields: 'vessel_count_total DESC' }, n);
   const ids = db.map((r) => `'${r.portid}'`).join(',');
-  // the last ~4 months, plus the same weeks a year earlier for the year-on-year comparison
-  const recent = `date >= DATE '${isoDaysAgo(120)}'`, yago = `date >= DATE '${isoDaysAgo(400)}' AND date <= DATE '${isoDaysAgo(345)}'`;
-  const rows = await arc<PortDayRow>('Daily_Ports_Data', { where: `portid IN (${ids}) AND ((${recent}) OR (${yago}))`, outFields: 'portid,date,portcalls,import,export', orderByFields: 'date,portid' });
+  // the last ~3 months, plus the same weeks a year earlier for the year-on-year comparison (sorted here, not by the server)
+  const recent = `date >= DATE '${isoDaysAgo(90)}'`, yago = `date >= DATE '${isoDaysAgo(390)}' AND date <= DATE '${isoDaysAgo(350)}'`;
+  const rows = await arc<PortDayRow>('Daily_Ports_Data', { where: `portid IN (${ids}) AND ((${recent}) OR (${yago}))`, outFields: 'portid,date,portcalls,import,export' });
   return shapePorts(db, rows);
 }
 export const PORTS: SourceDef<PortsData> = {
   id: 'portwatch:ports', label: 'Port traffic', provider: 'IMF PortWatch', every: 6 * 60 * 60_000,
-  fetch: () => fetchPorts(),
+  asOf: STATIC ? snapTime('ports.json') : undefined,
+  fetch: () => (STATIC ? snap<PortsData>('ports.json') : fetchPorts()),
 };
 
 // ============================ Cargo flights (adsb.lol; aircraft within ~150 nm of each hub, cargo airlines only)

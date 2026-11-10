@@ -108,10 +108,11 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - 13F (`src/data/funds.ts`): ~20 named funds, latest 13F-HR info table (the .xml that isn't primary_doc.xml; values in dollars).
   CUSIP → ticker via OpenFIGI `POST api.openfigi.com/v3/mapping` (no key: 10 per request, 25 requests/min; BRK/B style),
   map cached in `.cache/cusips.json`. Wrong CIKs are caught by the `match` regex on the filer name. Link view mode
-  "Funds & activists" uses `network.holders` (fund positions ≥1% of the fund, 13D filers).
+  "Funds & activists" uses `network.holders` (fund positions ≥2% of the fund, 13D filers).
 - Earnings season (`seasonStats`, sources.ts): Finnhub earnings calendar in 2-week calls over 91 days → `season.json`.
-- Ports (Phase 5, `src/data/trade.ts`, CORS, live): PortWatch `PortWatch_ports_database` (top 30 by vessel_count_total) and
-  `Daily_Ports_Data` (portcalls, import, export in tonnes; `date` is DateOnly, `portid IN (...)` works).
+- Ports (Phase 5, `src/data/trade.ts`, snapshot `ports.json` daily; live locally): PortWatch `PortWatch_ports_database` (top 30 by vessel_count_total) and
+  `Daily_Ports_Data` (portcalls, import, export in tonnes; `date` is DateOnly, `portid IN (...)` works). Daily_Ports_Data takes 20–30 s per 1,000-row page, too slow for
+  browsers; don't pass orderByFields on the daily tables (sort client-side) and query only the windows needed.
 - Cargo flights: adsb.lol `/v2/point/<lat>/<lon>/150` per hub (no CORS: relay `/px/adsb`, snapshot `cargo.json`). It returns
   429 after ~10 quick calls: 3 s apart in the job. airplanes.live refuses without contact; OpenSky's CORS is its own origin.
   Only all-cargo airline designators (`CARGO_AIRLINES`) are counted. Coverage over mainland China is ~nil.

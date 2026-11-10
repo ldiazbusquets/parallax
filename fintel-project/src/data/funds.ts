@@ -35,7 +35,7 @@ export interface Holding { cusip: string; issuer: string; t: string | null; valu
 export interface Fund { cik: string; name: string; style: FundDef['style']; period: string; filed: string; total: number; positions: number; holdings: Holding[]; link: string }
 export interface FundsData { funds: Fund[]; errors: string[]; v?: number }
 /** Bumped when the way funds.json is built changes, so the job rebuilds it at once instead of waiting a day. */
-export const FUNDS_V = 2;
+export const FUNDS_V = 3;
 
 const tag = (x: string, t: string) => x.match(new RegExp(`<(?:\\w+:)?${t}>\\s*([^<]*)<`, 'i'))?.[1].trim() ?? '';
 /** Sum an information table by CUSIP (one company can be listed under several managers); options are left out. */
@@ -82,7 +82,7 @@ export async function figiTickers(cusips: string[], gapMs = 2600): Promise<Recor
       method: 'POST', headers: { 'Content-Type': 'application/json' }, timeout: 20000,
       body: JSON.stringify(batch.map((c) => ({ idType: 'ID_CUSIP', idValue: c, exchCode: 'US' }))),
     });
-    batch.forEach((c, k) => { const d = res[k]?.data?.find((x) => x.marketSector === 'Equity') ?? res[k]?.data?.[0]; out[c] = d?.ticker ? d.ticker.replace(/\//g, '.') : null; });
+    batch.forEach((c, k) => { const d = res[k]?.data?.find((x) => x.marketSector === 'Equity') ?? res[k]?.data?.[0]; out[c] = d?.ticker ? d.ticker.replace(/\//g, '.').replace(/[^A-Z0-9.]/gi, '') : null; });
     if (i + 10 < cusips.length) await new Promise((r) => setTimeout(r, gapMs));
   }
   // foreign-incorporated companies listed in the US (Chubb, Medtronic…) have non-US CUSIPs: ask again without the exchange
@@ -94,9 +94,20 @@ export async function figiTickers(cusips: string[], gapMs = 2600): Promise<Recor
       method: 'POST', headers: { 'Content-Type': 'application/json' }, timeout: 20000,
       body: JSON.stringify(batch.map((c) => ({ idType: 'ID_CUSIP', idValue: c }))),
     }).catch(() => []);
-    batch.forEach((c, k) => { const d = res[k]?.data?.find((x) => x.marketSector === 'Equity' && x.exchCode === 'US') ?? res[k]?.data?.find((x) => x.marketSector === 'Equity'); if (d?.ticker) out[c] = d.ticker.replace(/\//g, '.'); });
+    batch.forEach((c, k) => { const d = res[k]?.data?.find((x) => x.marketSector === 'Equity' && x.exchCode === 'US') ?? res[k]?.data?.find((x) => x.marketSector === 'Equity'); if (d?.ticker) out[c] = d.ticker.replace(/\//g, '.').replace(/[^A-Z0-9.]/gi, ''); });
   }
   return out;
+}
+
+/** 13F issuer names are abbreviated ("JANUS HENDERSON GROUP PLC", "ALPHABET INC"): compare the first two significant words. */
+const STOP = /\b(inc|corp|corporation|co|company|plc|ltd|limited|group|holdings?|hldgs?|class|cl|com|new|the|n\.?v|s\.?a|ag|se|lp|llc|ord|shs|sponsored|adr|ads|common|stock|ordinary|shares)\b/g;
+export const nameKey = (n: string) => n.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9 ]/g, ' ').replace(STOP, ' ').split(/\s+/).filter(Boolean).slice(0, 2).join(' ');
+/** Ticker for an issuer name from a list of {symbol, name}, only when exactly one company matches. */
+export function tickerByName(issuer: string, rows: { s: string; n: string }[]): string | null {
+  const k = nameKey(issuer);
+  if (!k || k.length < 4) return null;
+  const hits = [...new Set(rows.filter((r) => nameKey(r.n) === k).map((r) => r.s))];
+  return hits.length === 1 ? hits[0] : null;
 }
 
 /** Funds holding a ticker, biggest share of their portfolio first. Tickers compare without punctuation (BRK.B = BRK/B). */

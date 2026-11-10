@@ -102,3 +102,13 @@ describe('trade flows', () => {
     expect(r[0].hazards.map((h) => h.id)).toEqual(['h']);
   });
 });
+
+import { tickerByName } from './funds';
+describe('13F issuer names', () => {
+  it('matches an abbreviated issuer to one listed company', () => {
+    const rows = [{ s: 'JHG', n: 'Janus Henderson Group plc' }, { s: 'GOOGL', n: 'Alphabet Inc.' }, { s: 'GOOG', n: 'Alphabet Inc.' }, { s: 'AA', n: 'Alcoa Corporation' }];
+    expect(tickerByName('JANUS HENDERSON GROUP PLC', rows)).toBe('JHG');
+    expect(tickerByName('ALPHABET INC', rows)).toBeNull(); // two share classes: ambiguous
+    expect(tickerByName('ALCOA CORP', rows)).toBe('AA');
+  });
+});

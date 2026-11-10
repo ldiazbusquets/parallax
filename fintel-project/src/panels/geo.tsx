@@ -117,7 +117,7 @@ export function Shipping() {
         </tbody>
       </table>}
       {tab === 'ports' && <table className="t">
-        <thead><tr><th>Port</th><th>Calls/day</th><th>YoY</th><th className="hs">Cargo t/day</th><th>1y</th></tr></thead>
+        <thead><tr><th>Port</th><th>Calls/day</th><th>YoY</th><th className="hs">Cargo t/day</th><th>90d</th></tr></thead>
         <tbody>{ports.map((r) => (
           <tr key={r.p.id} className="click" onClick={() => focus(r.p.lat, r.p.lng)} title={`${r.p.name}, ${r.p.country}`}>
             <td>{r.p.name.replace(/\s*\(.*\)$/, '')} <small className="faint">{iso2(r.p.iso3)}</small></td>

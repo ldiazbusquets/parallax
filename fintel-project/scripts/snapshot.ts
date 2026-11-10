@@ -7,8 +7,8 @@ import path from 'node:path';
 import { chartQuotes, chartLive, ohlcSnapName, SNAP_FILES } from '../src/data/yahoo';
 import { ecoCalendar, govYields } from '../src/data/global';
 import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreener, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
-import { fetchCargo } from '../src/data/trade';
-import { figiTickers, FUNDS, FUNDS_V, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
+import { fetchCargo, fetchPorts } from '../src/data/trade';
+import { figiTickers, FUNDS, FUNDS_V, tickerByName, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
 import { unzipSync, strFromU8 } from 'fflate';
 import { parseGdeltExport, summariseWindow, type Ev } from '../src/data/events';
 import { fredMany, DAILY_IDS, MACRO_IDS, FRED_SINCE } from '../src/data/fred';
@@ -263,6 +263,16 @@ async function main() {
     }, 2 * 60_000);
   }
 
+  if (want('ports')) {
+    await step('ports', async () => {
+      // PortWatch updates weekly and its daily port table is slow to query (20–30 s a page): once a day is plenty
+      const old = await readSnap<unknown>('ports.json');
+      if (old && Date.now() - old.generated < 20 * 3600_000) return 'cached (daily)';
+      const d = await fetchPorts(); await save('ports.json', d);
+      return `${d.ports.length} ports, ${Object.values(d.daily).reduce((a, x) => a + x.length, 0)} daily rows to ${d.last}`;
+    }, 5 * 60_000);
+  }
+
   if (want('bis')) {
     await step('bis', async () => { const p = await bisPolicy(); await save('bis.json', p); return `${Object.keys(p).length} central banks`; });
   }
@@ -364,10 +374,15 @@ async function main() {
       for (const def of FUNDS) { try { raw.push({ def, r: await latest13F(def) }); } catch (e) { errors.push(`${def.name}: ${(e as Error).message}`); log('  13F', def.name, (e as Error).message); } }
       const need = [...new Set(raw.flatMap((x) => x.r.rows.slice(0, 40).map((h) => h.cusip)))].filter((c) => !(c in cus));
       if (need.length) { try { Object.assign(cus, await figiTickers(need.slice(0, 600))); } catch (e) { log('  openfigi', (e as Error).message); } await writeCache('cusips-v2.json', cus); }
+      // whatever OpenFIGI couldn't map: match the issuer name against the screener (only an unambiguous match counts)
+      const screen = (await read<ScreenRow[]>('screener.json')) ?? [];
+      const names = new Map(raw.flatMap((x) => x.r.rows.map((h) => [h.cusip, h.issuer] as const)));
+      let byName = 0;
+      for (const [c, n] of names) if (!cus[c]) { const t = tickerByName(n, screen); if (t) { cus[c] = t; byName++; } }
       const funds: Fund[] = raw.map(({ def, r }) => ({ cik: def.cik, name: def.name, style: def.style, period: r.period, filed: r.filed, positions: r.rows.length, link: r.link, ...shapeHoldings(r.rows, cus) }));
       if (!funds.length) throw new Error(errors.join('; '));
       await save('funds.json', { funds, errors, v: FUNDS_V } satisfies FundsData);
-      return `${funds.length}/${FUNDS.length} funds, ${need.length} new CUSIPs mapped · ${funds.map((f) => f.name.split(' ')[0] + ' ' + f.period).slice(0, 4).join(', ')}…`;
+      return `${funds.length}/${FUNDS.length} funds, ${need.length} new CUSIPs looked up, ${byName} matched by name · ${funds.map((f) => f.name.split(' ')[0] + ' ' + f.period).slice(0, 4).join(', ')}…`;
     }, 6 * 60_000);
   }
 

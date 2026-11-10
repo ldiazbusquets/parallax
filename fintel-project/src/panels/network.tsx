@@ -52,9 +52,9 @@ function graphFor(net: Network, mode: Mode, focus: string | null) {
   for (const p of people) for (const l of p.links) { const a = idx.get('p:' + p.cik), b = idx.get('c:' + l.ticker); if (a != null && b != null) edges.push({ a, b, role: l.role }); }
   return { nodes, edges, people };
 }
-/** Funds (13F) and 13D filers linked to the companies they own; a fund's smallest positions (<1% of it) are left out. */
+/** Funds (13F) and 13D filers linked to the companies they own; a fund's small positions (under 2% of it) are left out. */
 function holderGraph(net: Network, focus: string | null) {
-  const hs = (net.holders ?? []).map((h) => ({ ...h, links: h.links.filter((l) => h.kind === '13D' || (l.pct ?? 0) >= 1) }))
+  const hs = (net.holders ?? []).map((h) => ({ ...h, links: h.links.filter((l) => h.kind === '13D' || (l.pct ?? 0) >= 2) }))
     .filter((h) => h.links.length && (!focus || h.links.some((l) => l.ticker === focus)));
   const tickers = new Set(hs.flatMap((h) => h.links.map((l) => l.ticker)));
   if (focus) tickers.add(focus);
@@ -91,7 +91,7 @@ export function LinkView({ onOpen }: { onOpen: (t: string) => void }) {
         {focus && <button className="btn" onClick={() => setFocus(null)}>✕ {focus}</button>}
         <Tabs small value={mode} onChange={(m) => { setMode(m); setSel(null); }} options={[['links', 'Shared insiders'], ['holders', 'Funds & activists'], ['all', 'Everyone']]} />
       </>}
-      note={net.data ? `${net.data.companies.length} companies · ${net.data.people.length} officers, directors and 10% owners from recent Form 4 filings · ${interlocks} sit at two or more. Funds & activists: ${net.data.holders?.filter((h) => h.kind === 'fund').length ?? 0} well-known funds’ latest 13F positions of 1% or more of the fund, and 13D filers (5%+ holders who may seek to influence the company). Click a company to focus it, double-click to open its page.` : 'Built daily from SEC Form 4, 13F and 13D filings.'}>
+      note={net.data ? `${net.data.companies.length} companies · ${net.data.people.length} officers, directors and 10% owners from recent Form 4 filings · ${interlocks} sit at two or more. Funds & activists: ${net.data.holders?.filter((h) => h.kind === 'fund').length ?? 0} well-known funds’ latest 13F positions of 2% or more of the fund, and 13D filers (5%+ holders who may seek to influence the company). Click a company to focus it, double-click to open its page.` : 'Built daily from SEC Form 4, 13F and 13D filings.'}>
       {g && (
         <div className="net">
           <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Network graph" onClick={() => setSel(null)}>

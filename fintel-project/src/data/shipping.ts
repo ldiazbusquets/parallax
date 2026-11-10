@@ -15,7 +15,7 @@ async function query<T>(service: string, params: Record<string, string>): Promis
   const out: T[] = [];
   for (let offset = 0; offset < 50_000; ) {
     const qs = new URLSearchParams({ f: 'json', returnGeometry: 'false', resultOffset: String(offset), resultRecordCount: '1000', ...params });
-    const j = await getJSON<ArcRows<T>>(`${PW}/${service}/FeatureServer/0/query?${qs}`, { timeout: 30000 });
+    const j = await getJSON<ArcRows<T>>(`${PW}/${service}/FeatureServer/0/query?${qs}`, { timeout: 60000 });
     if (j.error) throw new Error('PortWatch: ' + (j.error.message ?? 'query failed'));
     const rows = (j.features ?? []).map((f) => f.attributes);
     out.push(...rows);
@@ -57,7 +57,8 @@ export const yearBefore = (d: string) => new Date(new Date(d + 'T00:00:00Z').get
 export async function fetchShipping(): Promise<ShippingData> {
   const [db, days] = await Promise.all([
     query<DbRow>('PortWatch_chokepoints_database', { where: '1=1', outFields: 'portid,portname,lat,lon,vessel_count_total,industry_top1,industry_top2,industry_top3' }),
-    query<DayRow>('Daily_Chokepoints_Data', { where: `date >= DATE '${isoDaysAgo(400)}'`, outFields: 'portid,date,n_total,n_tanker,n_container,n_dry_bulk,capacity', orderByFields: 'date,portid' }),
+    // the last ~4 months (for the sparkline) and the same weeks a year earlier (for YoY); sorted here, not by the server
+    query<DayRow>('Daily_Chokepoints_Data', { where: `(date >= DATE '${isoDaysAgo(125)}') OR (date >= DATE '${isoDaysAgo(390)}' AND date <= DATE '${isoDaysAgo(350)}')`, outFields: 'portid,date,n_total,n_tanker,n_container,n_dry_bulk,capacity' }),
   ]);
   return shapeShipping(db, days);
 }

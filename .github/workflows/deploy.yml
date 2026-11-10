@@ -54,6 +54,7 @@ jobs:
             fintel-project/public/snap/screener.json
             fintel-project/public/snap/funds.json
             fintel-project/public/snap/season.json
+            fintel-project/public/snap/ports.json
           key: companies-${{ steps.day.outputs.d }}-${{ github.run_id }}
           restore-keys: |
             companies-${{ steps.day.outputs.d }}-
