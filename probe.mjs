@@ -1,11 +1,13 @@
-const PW = 'https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services';
-const ago = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
-async function arc(svc, params) { const out = []; let pages = 0; for (let off = 0; off < 30000;) { const t0 = Date.now(); const r = await fetch(`${PW}/${svc}/FeatureServer/0/query?` + new URLSearchParams({ f: 'json', returnGeometry: 'false', resultOffset: String(off), resultRecordCount: '1000', ...params })); const j = await r.json(); pages++; if (j.error) { console.log('ERR', JSON.stringify(j.error)); break; } const rows = (j.features || []).map((f) => f.attributes); out.push(...rows); console.log(svc, 'page', pages, rows.length, Date.now() - t0, 'ms', j.exceededTransferLimit); if (!j.exceededTransferLimit || !rows.length) break; off += rows.length; } return out; }
-let t = Date.now();
-const db = await arc('PortWatch_ports_database', { where: '1=1', outFields: 'portid,portname,country,ISO3,lat,lon,vessel_count_total', orderByFields: 'vessel_count_total DESC', resultRecordCount: '30' });
-console.log('db', db.length, Date.now() - t); t = Date.now();
-const ids = db.slice(0, 30).map((r) => `'${r.portid}'`).join(',');
-const rows = await arc('Daily_Ports_Data', { where: `portid IN (${ids}) AND ((date >= DATE '${ago(120)}') OR (date >= DATE '${ago(400)}' AND date <= DATE '${ago(345)}'))`, outFields: 'portid,date,portcalls,import,export', orderByFields: 'date,portid' });
-console.log('ports rows', rows.length, Date.now() - t); t = Date.now();
-const ch = await arc('Daily_Chokepoints_Data', { where: `date >= DATE '${ago(400)}'`, outFields: 'portid,date,n_total,n_tanker,n_container,n_dry_bulk,capacity', orderByFields: 'date,portid' });
-console.log('choke rows', ch.length, Date.now() - t);
+import { chromium } from 'playwright';
+const B = 'https://ldiazbusquets.github.io/parallax/';
+const j = async (f) => (await (await fetch(B + 'snap/' + f + '?t=' + Date.now())).json()).data;
+const f = await j('funds.json'); for (const x of f.funds.slice(0, 20)) console.log(`fund ${x.name} ${x.period} mapped=${x.holdings.filter((h) => h.t).length}/${x.holdings.length} top=${x.holdings.slice(0, 3).map((h) => h.t + ':' + h.pct.toFixed(1)).join(',')}`);
+const p0 = await j('ports.json'); console.log('ports', p0.ports.length, p0.last);
+const br = await chromium.launch(); const p = await br.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto(B + '#/w/geo'); await p.waitForTimeout(25000);
+const sp = p.locator('#p-shipping');
+await sp.screenshot({ path: 'shots/choke.png' });
+await sp.getByText('Risk', { exact: true }).first().click(); await p.waitForTimeout(2500); await sp.screenshot({ path: 'shots/risk.png' });
+await sp.getByText('Ports', { exact: true }).first().click(); await p.waitForTimeout(2500); await sp.screenshot({ path: 'shots/ports.png' });
+await p.locator('#p-aircargo').screenshot({ path: 'shots/aircargo.png' }).catch((e) => console.log('aircargo', e.message));
+await br.close();
