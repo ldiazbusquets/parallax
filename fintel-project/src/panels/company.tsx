@@ -9,6 +9,7 @@ import { Chg, Panel, Tabs, Big, useNow } from '@/ui/kit';
 import { PriceChart, useChartStyle } from '@/ui/charts';
 import { chartSource, RANGES } from './markets';
 import { AnalystRatings, ShortCard } from './equity';
+import { SCREENER, TRACKED } from '@/data/equity';
 
 // Bloomberg-style company page: DES (description), GP (chart), FA (financials), insider trades, filings, links.
 
@@ -84,6 +85,10 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
   const ch = useSource(chartSource(ticker, range));
   const x = q.data?.[ticker];
   const c = co.data;
+  // The website builds full pages for the companies it tracks; any other listing gets the screener's facts.
+  const sc = useSource(SCREENER);
+  const row = sc.data?.find((r) => r.s === ticker);
+  const partial = STATIC && !TRACKED.includes(ticker);
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [onClose]);
   useEffect(() => { document.title = `${ticker} · Parallax`; return () => { document.title = 'Parallax'; }; }, [ticker]);
   const links = useMemo(() => (net.data?.people ?? []).filter((p) => p.links.length > 1 && p.links.some((l) => l.ticker === ticker)), [net.data, ticker]);
@@ -95,16 +100,31 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
         <button className="btn" onClick={onClose}>← Terminal</button>
         <div style={{ minWidth: 0 }}>
           <div className="mono" style={{ fontSize: 11, color: 'var(--faint)', letterSpacing: '.12em' }}>{ticker} US EQUITY · DES</div>
-          <h1>{c?.name ?? x?.name ?? ticker}</h1>
-          <div className="dim" style={{ fontSize: 12 }}>{[c?.industry, c?.exchange, c?.state && `Inc. ${c.state}`, c?.fiscalYearEnd && `FY ends ${c.fiscalYearEnd.slice(0, 2)}/${c.fiscalYearEnd.slice(2)}`].filter(Boolean).join(' · ')}</div>
+          <h1>{c?.name ?? x?.name ?? row?.n ?? ticker}</h1>
+          <div className="dim" style={{ fontSize: 12 }}>{[c?.industry ?? row?.ind, c?.exchange, c?.state && `Inc. ${c.state}`, c?.fiscalYearEnd && `FY ends ${c.fiscalYearEnd.slice(0, 2)}/${c.fiscalYearEnd.slice(2)}`].filter(Boolean).join(' · ')}</div>
         </div>
         <div className="sp" />
         <div style={{ textAlign: 'right' }}>
-          <div className="mono" style={{ fontSize: 26, fontWeight: 600 }}>{x ? price(x.price) : '—'}</div>
-          <div className="mono"><Chg v={x?.changePct} /> <span className="faint">{x?.currency}</span></div>
+          <div className="mono" style={{ fontSize: 26, fontWeight: 600 }}>{x ? price(x.price) : row ? price(row.p) : '—'}</div>
+          <div className="mono"><Chg v={x?.changePct ?? row?.ch} /> <span className="faint">{x?.currency ?? (row ? 'USD' : '')}</span></div>
         </div>
       </div>
-      <div className="co-grid">
+      {partial ? (
+        <div className="co-grid">
+          <Panel title="Overview" src={sc} span="c8" hasData={!!sc.data}
+            note="From Nasdaq’s stock screener (prices delayed, as of the site’s last update). Short volume is FINRA’s daily Reg SHO file.">
+            {row ? <div className="kpis">
+              <div className="kpi"><span>Price</span><b><Big>{price(row.p)}</Big></b><small><Chg v={row.ch} /> today</small></div>
+              <div className="kpi"><span>Market value</span><b><Big>{isNum(row.mc) ? '$' + big(row.mc, 1) : '—'}</Big></b></div>
+              <div className="kpi"><span>Volume</span><b><Big>{isNum(row.v) ? big(row.v, 1) : '—'}</Big></b><small>shares today</small></div>
+              <div className="kpi"><span>Sector</span><b style={{ fontSize: 16 }}>{row.sec || '—'}</b><small>{row.ind}</small></div>
+              <div className="kpi"><span>Country</span><b style={{ fontSize: 16 }}>{row.cty || '—'}</b></div>
+            </div> : <div className="empty">{sc.data ? `${ticker} isn’t a US-listed stock in Nasdaq’s screener.` : 'Loading…'}</div>}
+            <p className="faint" style={{ fontSize: 12.5, marginTop: 14 }}>The website builds full pages (charts, financials, filings, insider trades, analyst ratings) for the {TRACKED.length} companies it tracks. Run Parallax on your computer for a full page of any company.</p>
+          </Panel>
+          <ShortCard t={ticker} shares={row && isNum(row.mc) ? row.mc / row.p : null} />
+        </div>
+      ) : <div className="co-grid">
         <Panel title="Price" src={[q, ch]} span="c8" hasData={!!ch.data || !!x} right={<div className="tabrow"><Tabs small value={style} onChange={setStyle} options={[['line', 'Line'], ['candles', 'Candles']]} /><Tabs small value={range} onChange={setRange} options={Object.keys(RANGES).map((k) => [k, k] as [string, string])} /></div>}>
           {ch.data && ch.data.c.length > 1 ? <PriceChart bars={ch.data} style={style} h={240} base={range === '1D' ? x?.prev ?? ch.data.prevClose : undefined} intraday={range === '1D' || range === '5D'} /> : <div className="empty">{ch.error ?? 'Loading chart…'}</div>}
           {x && <div className="legend"><span>Day {price(x.dayLow)} – {price(x.dayHigh)}</span><span>52W {price(x.yearLow)} – {price(x.yearHigh)}</span>{isNum(x.yearHigh) && <span>{pct((x.price / x.yearHigh - 1) * 100, 1)} from 52W high</span>}</div>}
@@ -158,7 +178,7 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
             {c.filings.map((f, i) => <tr key={i}><td><a href={f.link} target="_blank" rel="noreferrer"><b className="mono">{f.form}</b></a></td><td className="dim">{dateLabel(f.date)}</td><td className="l" style={{ fontFamily: 'var(--sans)', whiteSpace: 'normal' }}>{f.desc}{f.items ? <small className="faint"> · Items {f.items}</small> : ''}</td></tr>)}
           </tbody></table>}
         </Panel>
-      </div>
+      </div>}
       {STATIC && co.status === 'error' && <p className="dim" style={{ padding: '0 16px 20px', fontSize: 12 }}>The website includes company pages for the stocks it tracks. Run FINTEL locally (npm run dev) to open any SEC-registered company.</p>}
     </div>
   );
