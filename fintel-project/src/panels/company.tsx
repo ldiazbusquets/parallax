@@ -122,7 +122,7 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
             </div> : <div className="empty">{sc.data ? `${ticker} isn’t a US-listed stock in Nasdaq’s screener.` : 'Loading…'}</div>}
             <p className="faint" style={{ fontSize: 12.5, marginTop: 14 }}>The website builds full pages (charts, financials, filings, insider trades, analyst ratings) for the {TRACKED.length} companies it tracks. Run Parallax on your computer for a full page of any company.</p>
           </Panel>
-          <ShortCard t={ticker} shares={row && isNum(row.mc) ? row.mc / row.p : null} />
+          <ShortCard t={ticker} shares={row && isNum(row.mc) ? row.mc / row.p : null} sharesFrom="Nasdaq market value ÷ price" />
         </div>
       ) : <div className="co-grid">
         <Panel title="Price" src={[q, ch]} span="c8" hasData={!!ch.data || !!x} right={<div className="tabrow"><Tabs small value={style} onChange={setStyle} options={[['line', 'Line'], ['candles', 'Candles']]} /><Tabs small value={range} onChange={setRange} options={Object.keys(RANGES).map((k) => [k, k] as [string, string])} /></div>}>
@@ -179,7 +179,7 @@ export function CompanyPage({ ticker, onClose, onTicker }: { ticker: string; onC
           </tbody></table>}
         </Panel>
       </div>}
-      {STATIC && co.status === 'error' && <p className="dim" style={{ padding: '0 16px 20px', fontSize: 12 }}>The website includes company pages for the stocks it tracks. Run FINTEL locally (npm run dev) to open any SEC-registered company.</p>}
+      {STATIC && co.status === 'error' && !partial && <p className="dim" style={{ padding: '0 16px 20px', fontSize: 12 }}>The website includes company pages for the stocks it tracks. Run Parallax locally (npm run dev) to open any SEC-registered company.</p>}
     </div>
   );
 }

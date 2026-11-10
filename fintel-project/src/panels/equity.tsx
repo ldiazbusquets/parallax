@@ -137,7 +137,7 @@ export function AnalystRatings({ t }: { t: string }) {
   );
 }
 
-export function ShortCard({ t, shares }: { t: string; shares: number | null }) {
+export function ShortCard({ t, shares, sharesFrom = 'SEC share count' }: { t: string; shares: number | null; sharesFrom?: string }) {
   const s = useSource(SHORTS);
   const sv = useSource(SHORT_VOL);
   const sc = useSource(SCREENER);
@@ -150,7 +150,7 @@ export function ShortCard({ t, shares }: { t: string; shares: number | null }) {
       note="Short interest is reported to FINRA twice a month. Short volume is the share of yesterday’s trading sold short (FINRA Reg SHO), which includes market-maker hedging.">
       <div className="kpis">
         <div className="kpi"><span>Shares short</span><b><Big>{x ? big(x.short, 1) : '—'}</Big></b><small>{x ? `settled ${dateLabel(x.date)}` : STATIC && s.data ? 'not tracked here' : ''}</small></div>
-        <div className="kpi"><span>% of shares out</span><b><Big>{x && out ? pct((x.short / out) * 100, 1, false) : '—'}</Big></b><small>{shares ? 'SEC share count' : out ? 'Nasdaq market cap ÷ price' : ''}</small></div>
+        <div className="kpi"><span>% of shares out</span><b><Big>{x && out ? pct((x.short / out) * 100, 1, false) : '—'}</Big></b><small>{shares ? sharesFrom : out ? 'Nasdaq market value ÷ price' : ''}</small></div>
         <div className="kpi"><span>Change</span><b><Big>{x && isNum(x.chgPct) ? <Chg v={x.chgPct} dp={1} invert /> : '—'}</Big></b><small>vs prior report</small></div>
         <div className="kpi"><span>Days to cover</span><b><Big>{x && isNum(x.dtc) ? x.dtc.toFixed(1) : '—'}</Big></b></div>
         <div className="kpi"><span>Short volume</span><b style={{ color: v && v[0] / v[1] >= 0.6 ? T.accent2 : undefined }}><Big>{v ? pct((v[0] / v[1]) * 100, 0, false) : '—'}</Big></b><small>{sv.data ? dateLabel(sv.data.date) : ''}</small></div>
