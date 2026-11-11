@@ -4,6 +4,7 @@ import { getKey } from '@/lib/keys';
 import { HOST, snap, snapTime, STATIC } from '@/lib/env';
 import { sourceFor, type SourceDef } from './store';
 import { DEFAULT_WATCHLIST, HEATMAP } from './universe';
+import { sparkLive, type Quote } from './yahoo';
 
 // Phase 3 sources: a whole-market stock screener, analyst recommendation trends, and short interest.
 
@@ -11,7 +12,8 @@ import { DEFAULT_WATCHLIST, HEATMAP } from './universe';
 export const TRACKED = [...new Set([...HEATMAP.flatMap((g) => g.items), ...DEFAULT_WATCHLIST])].filter((t) => !['SPY', 'QQQ', 'TLT'].includes(t));
 
 // ============================ Screener: every US-listed stock (Nasdaq's public screener, no key, no CORS)
-export interface ScreenRow { s: string; n: string; p: number; ch: number | null; mc: number | null; v: number | null; sec: string; ind: string; cty: string }
+/** `t` (ms) is set when price and change come from a Yahoo quote rather than Nasdaq's screener file (which can lag a session or two). */
+export interface ScreenRow { s: string; n: string; p: number; ch: number | null; mc: number | null; v: number | null; sec: string; ind: string; cty: string; t?: number }
 const numOr = (x: unknown) => { const v = Number(String(x ?? '').replace(/[$,%\s]/g, '')); return String(x ?? '').trim() && Number.isFinite(v) ? v : null; };
 /** Clean company names: "Agilent Technologies Inc. Common Stock" → "Agilent Technologies Inc." */
 const tidyName = (n: string) => n.replace(/\s+(Common Stock|Class [A-C] Common Stock|Ordinary Shares|American Depositary Shares?|ADS)\b.*$/i, '').trim();
@@ -54,10 +56,26 @@ export const WIDE_N = 500;
 /** Yahoo and SEC write share classes with a dash (BRK-B); Nasdaq uses a slash (BRK/B). */
 export const dashSym = (s: string) => s.replace(/[/.]/g, '-');
 
+/** Nasdaq's screener download can be a session or two behind (on Nov 11, 2026 it still had Nov 9's prices), so the
+ *  largest companies get price and day change from Yahoo quotes; market value is rescaled to the new price. */
+export function freshenRows(rows: ScreenRow[], quotes: Record<string, Quote>): ScreenRow[] {
+  return rows.map((r) => {
+    const q = quotes[dashSym(r.s)];
+    if (!q || !Number.isFinite(q.price) || q.changePct == null) return r;
+    return { ...r, p: q.price, ch: q.changePct, mc: r.mc != null && r.p > 0 ? (r.mc * q.price) / r.p : r.mc, t: q.time };
+  });
+}
+export async function nasdaqScreenerFresh(n = 600): Promise<ScreenRow[]> {
+  const rows = await nasdaqScreener();
+  const syms = [...new Set([...topCompanies(rows, n).map((r) => r.s), ...TRACKED])].map(dashSym);
+  const q = await sparkLive(syms, '1d', '5m').catch(() => ({} as Record<string, Quote>));
+  return freshenRows(rows, q);
+}
+
 export const SCREENER: SourceDef<ScreenRow[]> = {
   id: 'nasdaq:screener', label: 'Stock screener', provider: 'Nasdaq', every: 30 * 60_000,
   asOf: STATIC ? snapTime('screener.json') : undefined,
-  fetch: () => (STATIC ? snap<ScreenRow[]>('screener.json') : nasdaqScreener()),
+  fetch: () => (STATIC ? snap<ScreenRow[]>('screener.json') : nasdaqScreenerFresh()),
 };
 
 // ============================ Analyst recommendation trends (Finnhub, free tier)

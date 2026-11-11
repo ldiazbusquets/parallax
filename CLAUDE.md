@@ -75,7 +75,8 @@ The app lives in `fintel-project/`. See its README for running it and the source
   RBA `f2-data.csv` `FCMYGBAG10D` (no CORS: relays `/px/boe|mof|rba`, snapshot `yields.json`).
 - Global credit: ICE BofA OAS on FRED (`GLOBAL_CREDIT` in fred.ts), all live as of Nov 2026. History is limited to ~3 years.
 - Screener: `api.nasdaq.com/api/screener/stocks?tableonly=true&download=true` (~7k rows, 2 MB; no CORS → relay `/px/nasdaq`,
-  snapshot `screener.json`). Analyst ratings: Finnhub `/stock/recommendation` (free). Short interest: FINRA
+  snapshot `screener.json`). Its prices can lag a session or two (Nov 11 still had Nov 9 closes): `nasdaqScreenerFresh` overwrites
+  price/change of the top 600 + TRACKED with Yahoo spark quotes (`freshenRows`, row `t`). Analyst ratings: Finnhub `/stock/recommendation` (free). Short interest: FINRA
   `POST api.finra.org/data/group/otcMarket/name/consolidatedShortInterest` (no CORS, snapshot `shorts.json`); daily short-sale
   volume `cdn.finra.org/equity/regsho/daily/CNMSshvolYYYYMMDD.txt` allows browsers. `src/data/equity.ts`.
 - Candles: `parseChart` keeps OHLCV when every bar is complete; the site publishes 1y daily bars per tracked symbol in

@@ -212,7 +212,7 @@ export function Heatmap({ onPick }: { onPick: (s: string) => void }) {
   return (
     <Panel id="p-heatmap" title="Market heatmap" src={sc} span="c8" hasData={!!sc.data}
       right={<div className="tabrow"><span className="mono dim hm-sum">{all.length ? <>{adv}/{all.length} up · weighted <Chg v={wAvg} /></> : null}</span><Tabs small value={top} onChange={setTop} options={[['100', 'Top 100'], ['200', 'Top 200'], ['500', 'Top 500']]} /></div>}
-      note="The largest US-listed companies by market value (one box per company), sized by market value and grouped by sector; colour is today’s change, from −3% (red) to +3% (green). Sector headers show the market-value-weighted change. Data: Nasdaq’s stock screener, prices delayed and as of the site’s last update. Hover for details; click a box to open the company.">
+      note="The largest US-listed companies by market value (one box per company), sized by market value and grouped by sector; colour is today’s change, from −3% (red) to +3% (green). Sector headers show the market-value-weighted change. Prices and day change come from Yahoo quotes (regular session, delayed) as of the site’s last update, shown in the card’s tooltip; after-hours moves, which apps like Robinhood include, aren’t counted. Company list, sectors and market values come from Nasdaq’s stock screener. Hover for details; click a box to open the company.">
       <div className="tm" ref={box} style={{ height: H }}>
         {layout.map((sr) => (
           <div key={sr.item.id} className="tm-s" style={{ left: sr.x, top: sr.y, width: sr.w, height: sr.h }}>

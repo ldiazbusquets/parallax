@@ -6,7 +6,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chartQuotes, chartLive, ohlcSnapName, SNAP_FILES } from '../src/data/yahoo';
 import { ecoCalendar, govYields } from '../src/data/global';
-import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreener, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
+import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreenerFresh, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
 import { fetchCargo, fetchPorts } from '../src/data/trade';
 import { figiTickers, FUNDS, FUNDS_V, tickerByName, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
 import { unzipSync, strFromU8 } from 'fflate';
@@ -238,7 +238,11 @@ async function main() {
   }
 
   if (want('screener')) {
-    await step('screener', async () => { const r = await nasdaqScreener(); await save('screener.json', r); return `${r.length} stocks`; });
+    await step('screener', async () => {
+      const r = await nasdaqScreenerFresh(); await save('screener.json', r);
+      const nv = r.find((x) => x.s === 'NVDA');
+      return `${r.length} stocks, ${r.filter((x) => x.t).length} with Yahoo prices (e.g. NVDA ${nv?.p} ${nv?.ch?.toFixed(2)}%)`;
+    });
     await step('shorts', async () => {
       const old = await readSnap<unknown>('shorts.json');
       if (old && Date.now() - old.generated < 12 * 3600_000) return 'cached (12h)';

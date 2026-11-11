@@ -112,3 +112,12 @@ describe('13F issuer names', () => {
     expect(tickerByName('ALCOA CORP', rows)).toBe('AA');
   });
 });
+
+import { freshenRows } from './equity';
+describe('screener prices', () => {
+  it('takes price and change from a Yahoo quote and rescales market value', () => {
+    const rows = [{ s: 'BRK/B', n: 'Berkshire', p: 100, ch: 2, mc: 1000, v: 1, sec: '', ind: '', cty: '' }, { s: 'XYZ', n: 'X', p: 5, ch: 1, mc: 10, v: 1, sec: '', ind: '', cty: '' }];
+    const q = { 'BRK-B': { symbol: 'BRK-B', name: '', price: 90, prev: 100, change: -10, changePct: -10, time: 5, currency: 'USD', spark: [] } };
+    expect(freshenRows(rows, q)).toEqual([{ ...rows[0], p: 90, ch: -10, mc: 900, t: 5 }, rows[1]]);
+  });
+});
