@@ -1,15 +1,4 @@
-import { chromium } from 'playwright';
-const B = 'https://ldiazbusquets.github.io/parallax/';
-const sc = await (await fetch(B + 'snap/screener.json?t=' + Date.now())).json();
-const nv = sc.data.find((r) => r.s === 'NVDA'); console.log('NVDA', JSON.stringify(nv), 'with yahoo', sc.data.filter((r) => r.t).length);
-const br = await chromium.launch(); const p = await br.newPage({ viewport: { width: 1440, height: 900 } });
-await p.goto(B + '#/w/markets'); await p.waitForTimeout(9000);
-const hm = p.locator('#p-heatmap');
-await hm.getByText('Top 500', { exact: true }).first().click(); await p.waitForTimeout(2500);
-await hm.screenshot({ path: 'shots/heat500.png' });
-const n = await hm.locator('.tm-t').count(), lab = await hm.locator('.tm-t b').count(); console.log('tiles', n, 'labelled', lab);
-await p.goto(B + '#/w/geo'); await p.waitForTimeout(10000);
-await p.evaluate(() => dispatchEvent(new CustomEvent('fintel:map-focus', { detail: { lat: 7.8, lng: 80.7, iso3: 'LKA' } })));
-await p.waitForTimeout(6000);
-await p.locator('#p-map').screenshot({ path: 'shots/lka.png' });
-await br.close();
+const UAS = { none: {}, chrome: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36', Accept: 'application/json,text/plain,*/*', 'Accept-Language': 'en-US,en;q=0.9', Referer: 'https://www.imf.org/external/datamapper/NGDP_RPCH@WEO' } };
+for (const [k, h] of Object.entries(UAS)) for (const u of ['https://www.imf.org/external/datamapper/api/v1/NGDP_RPCH', 'https://api.imf.org/external/sdmx/2.1/data/IMF.RES,WEO/LKA.NGDP_RPCH.A?startPeriod=2024', 'https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.RES/WEO/+/LKA.NGDP_RPCH.A?c[TIME_PERIOD]=ge:2024']) {
+  try { const r = await fetch(u, { headers: h }); const t = await r.text(); console.log(k, r.status, u.slice(0, 70), t.slice(0, 200).replace(/\s+/g, ' ')); } catch (e) { console.log(k, 'ERR', u.slice(0, 60), String(e)); }
+}
