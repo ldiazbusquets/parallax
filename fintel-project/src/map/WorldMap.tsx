@@ -10,7 +10,7 @@ import { useSource } from '@/data/store';
 import { EVENT_CATS, EVENTS, FIPS, fipsByName, cameoLabel, vsNormal, type EventCat, type EventsData } from '@/data/events';
 import { IMF, IMF_INDICATORS, POLICY, WB_INDICATORS, worldBankSource, type ImfData } from '@/data/sources';
 import { bondId, policyArea, COUNTRIES, otherCountry, type Country } from '@/data/universe';
-import { WORLD } from '@/data/world';
+import { OVERSEAS, WORLD } from '@/data/world';
 import { HAZARDS, HAZARD_COLOR, HAZARD_LABEL, type Hazard } from '@/data/hazards';
 import { pickWindow, useEventWindow } from '@/ui/evwindow';
 import { LANES_URL, SHIPPING, weekAvg, yearBefore, type ShippingData } from '@/data/shipping';
@@ -65,10 +65,23 @@ function unwrap(f: Feature): Feature {
   if (g.type === 'MultiPolygon') return { ...f, geometry: { ...g, coordinates: g.coordinates.map((p) => p.map(fix)) } };
   return f;
 }
+/** Natural Earth draws French Guiana, Réunion, Svalbard… as parts of France, Norway and the Netherlands. Move those
+ *  polygons into their own features so each can be clicked on its own. */
+function splitOverseas(out: Map<string, Feature>) {
+  for (const [parent, iso, [w, s, e, n]] of OVERSEAS) {
+    const f = out.get(parent), g = f?.geometry;
+    if (!f || !g || g.type !== 'MultiPolygon') continue;
+    const inBox = (poly: number[][][]) => { const [x, y] = poly[0].reduce((a, p) => [a[0] + p[0] / poly[0].length, a[1] + p[1] / poly[0].length], [0, 0]); return x >= w && x <= e && y >= s && y <= n; };
+    const mine = g.coordinates.filter(inBox), rest = g.coordinates.filter((p) => !inBox(p));
+    if (!mine.length || !rest.length) continue;
+    out.set(parent, { ...f, geometry: { type: 'MultiPolygon', coordinates: rest } });
+    out.set(iso, { type: 'Feature', properties: { iso3: iso }, geometry: { type: 'MultiPolygon', coordinates: mine } });
+  }
+}
 let shapes: Promise<Map<string, Feature>> | null = null;
 /** Every country's outline, keyed by ISO3 (loaded once, ~230 KB gzipped, only when the map is shown). */
 function countryShapes() {
-  shapes ||= fetch(countriesUrl).then((r) => r.json()).then((t: Topology<{ countries: GeometryCollection }>) => {
+  shapes ||= fetch(countriesUrl).then((r) => r.json()).then(async (t: Topology<{ countries: GeometryCollection }>) => {
     const fc = feature(t, t.objects.countries) as FeatureCollection;
     const out = new Map<string, Feature>();
     for (const f of fc.features) {
@@ -76,6 +89,12 @@ function countryShapes() {
       const iso = ISO_BY_NUM[id] ?? WORLD[id]?.[0] ?? (f.properties?.name === 'Kosovo' ? 'XKX' : undefined);
       if (iso && !out.has(iso)) out.set(iso, { ...unwrap(f), properties: { iso3: iso } });
     }
+    splitOverseas(out);
+    // three small places missing at 1:50m, from the 1:10m file (4 KB)
+    try {
+      const extra = await fetch('./data/extra-shapes.json').then((r) => r.json()) as FeatureCollection;
+      for (const f of extra.features) { const iso = f.properties?.iso3 as string; if (iso && !out.has(iso)) out.set(iso, f); }
+    } catch { /* optional */ }
     return out;
   });
   return shapes;

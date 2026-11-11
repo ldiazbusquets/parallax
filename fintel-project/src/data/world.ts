@@ -237,6 +237,24 @@ export const WORLD: Record<string, [iso3: string, iso2: string, name: string, cu
   '008': ['ALB', 'AL', "Albania", 'ALL'],
   '004': ['AFG', 'AF', "Afghanistan", 'AFN'],
   '010': ['ATA', 'AQ', "Antarctica", ''],
-  '534': ['SXM', 'SX', "Sint Maarten", 'ANG'],};
+  '534': ['SXM', 'SX', "Sint Maarten", 'ANG'],  // not separate shapes in the 1:50m file: overseas regions split off France/Norway/Netherlands at load (see OVERSEAS),
+  // and three small ones taken from the 1:10m file (public/data/extra-shapes.json)
+  '254': ['GUF', 'GF', "French Guiana", 'EUR'],
+  '312': ['GLP', 'GP', "Guadeloupe", 'EUR'],
+  '474': ['MTQ', 'MQ', "Martinique", 'EUR'],
+  '638': ['REU', 'RE', "Réunion", 'EUR'],
+  '175': ['MYT', 'YT', "Mayotte", 'EUR'],
+  '744': ['SJM', 'SJ', "Svalbard and Jan Mayen", 'NOK'],
+  '535': ['BES', 'BQ', "Caribbean Netherlands", 'USD'],
+  '292': ['GIB', 'GI', "Gibraltar", 'GIP'],
+  '798': ['TUV', 'TV', "Tuvalu", 'AUD'],
+  '581': ['UMI', 'UM', "U.S. Minor Outlying Islands", 'USD'],
+};
+/** Polygons of a parent country's shape that belong to an overseas region: [parent, region, [west, south, east, north]]. */
+export const OVERSEAS: [string, string, [number, number, number, number]][] = [
+  ['FRA', 'GUF', [-55, 1.5, -51, 6.5]], ['FRA', 'GLP', [-62, 15.8, -60.9, 16.6]], ['FRA', 'MTQ', [-61.3, 14.3, -60.7, 15]],
+  ['FRA', 'REU', [55, -21.5, 56, -20.8]], ['FRA', 'MYT', [44.9, -13.1, 45.4, -12.5]],
+  ['NOR', 'SJM', [-10, 70.5, 35, 81]], ['NLD', 'BES', [-68.5, 11.9, -62.8, 17.8]],
+];
 export const WORLD_BY_ISO3: Record<string, { iso2: string; name: string; currency: string }> =
   Object.fromEntries(Object.values(WORLD).map(([iso3, iso2, name, currency]) => [iso3, { iso2, name, currency }]));
