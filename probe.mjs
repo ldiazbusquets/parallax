@@ -7,4 +7,9 @@ for (const [iso, lat, lng] of [['PRI', 18.2, -66.5], ['GUF', 4, -53]]) {
   await p.evaluate(([iso, lat, lng]) => dispatchEvent(new CustomEvent('fintel:map-focus', { detail: { lat, lng, iso3: iso } })), [iso, lat, lng]);
   await p.waitForTimeout(6000); await p.locator('#p-map').screenshot({ path: `shots/${iso}.png` });
 }
+await p.evaluate(() => dispatchEvent(new CustomEvent('fintel:map-focus', { detail: { lat: 30, lng: 10, iso3: 'FRA' } })));
+await p.waitForTimeout(5000);
+await p.locator('#p-map').getByText(/^Cargo/).first().click(); await p.waitForTimeout(5000);
+await p.locator('#p-map').screenshot({ path: 'shots/cargo.png' });
+console.log('cargo btn', await p.locator('#p-map').getByText(/^Cargo/).first().textContent());
 await br.close();
