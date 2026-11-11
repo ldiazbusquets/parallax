@@ -16,6 +16,7 @@ import { WorldMap } from '@/map/WorldMap';
 import { AirCargo, WorldEvents, Shipping } from '@/panels/geo';
 import { CommandBar } from '@/ui/Command';
 import { Footer } from '@/ui/Footer';
+import { useUpdateReady } from '@/ui/update';
 import { useInstall } from '@/ui/install';
 import { Slot, useWorkspaces, WORKSPACES, type Span } from '@/ui/layout';
 import { EarningsSeason, FundHoldings } from './panels/holders';
@@ -96,6 +97,7 @@ function Health({ onClick }: { onClick: () => void }) {
 }
 
 export default function App() {
+  const updateReady = useUpdateReady();
   const [canInstall, install] = useInstall();
   const [settings, setSettings] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -188,6 +190,7 @@ export default function App() {
         ))}
       </main>
       <Footer onTab={L.go} />
+      {updateReady && <button className="update-pill" onClick={() => location.reload()}>A new version of Parallax is live · <b>Reload</b></button>}
       {company && <CompanyPage key={company} ticker={company} onClose={closeCompany} onTicker={openCompany} />}
       {settings && <Settings onClose={() => setSettings(false)} />}
       <Toasts />

@@ -42,8 +42,12 @@ export default defineConfig(({ mode }) => {
     '/px/finra': relay('https://api.finra.org', '/px/finra', { 'User-Agent': BROWSER_UA, Accept: 'application/json' }),
     '/px/adsb': relay('https://api.adsb.lol', '/px/adsb', { 'User-Agent': BROWSER_UA, Accept: 'application/json' }),
   };
+  // build id (the commit on GitHub) baked into the app and written to version.json, so open tabs can tell
+  // a newer site is live and offer to reload
+  const BUILD = (process.env.GITHUB_SHA || 'dev').slice(0, 7) + '-' + Date.now().toString(36);
   return {
-    plugins: [react()],
+    define: { __BUILD__: JSON.stringify(BUILD) },
+    plugins: [react(), { name: 'px-version', generateBundle() { this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD }) }); } }],
     resolve: { alias: { '@': path.resolve(__dirname, './src') } },
     server: { proxy },
     preview: { proxy },
