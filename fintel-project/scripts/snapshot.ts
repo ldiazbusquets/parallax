@@ -4,7 +4,7 @@
    Usage: npx vite-node scripts/snapshot.ts [--only=quotes,fred,sec,rss,ecocal,yields,screener,companies,funds,…]                          */
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { chartQuotes, chartLive, ohlcSnapName, SNAP_FILES } from '../src/data/yahoo';
+import { chartQuotes, chartLive, ohlcSnapName, sparkLive, SNAP_FILES } from '../src/data/yahoo';
 import { ecoCalendar, govYields } from '../src/data/global';
 import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreenerFresh, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
 import { fetchCargo, fetchPorts } from '../src/data/trade';
@@ -15,7 +15,7 @@ import { fredMany, DAILY_IDS, MACRO_IDS, FRED_SINCE } from '../src/data/fred';
 import { EDGAR_FORMS, edgarUrl, edgarSnapName, FEEDS, finnhubEarnings, finnhubIpos, finnhubSeason, groqBrief, GROQ_MODEL, bisPolicy, imfWeo, finnhubCompanyNews } from '../src/data/sources';
 import { briefPrompt } from '../src/data/brief';
 import { buildCompany, buildNetwork, coSnapName, type CompanyData } from '../src/data/company';
-import { COMMODITIES, COUNTRIES, DEFAULT_WATCHLIST, FX, HEATMAP, INDICES, SECTORS, TAPE, VOL } from '../src/data/universe';
+import { COMMODITIES, COUNTRIES, DEFAULT_WATCHLIST, FX, HEATMAP, INDICES, SECTORS, TAPE, VOL, WORLD_FX } from '../src/data/universe';
 import { getText } from '../src/lib/http';
 
 const OUT = path.resolve(__dirname, '../public/snap');
@@ -94,8 +94,12 @@ async function main() {
     await step('quotes', async () => {
       const d1 = await chartQuotes(SYMBOLS, '1d', '5m');
       if (Object.keys(d1).length < SYMBOLS.length * 0.5) throw new Error(`only ${Object.keys(d1).length}/${SYMBOLS.length} symbols returned`);
+      // currencies of every other country on the map (spark: 20 per request, so a few seconds)
+      const extra = WORLD_FX.filter((x) => !d1[x]);
+      let fx = 0;
+      try { const q = await sparkLive(extra, '1d', '5m'); for (const [k, v] of Object.entries(q)) if (!d1[k]) { d1[k] = v; fx++; } } catch (e) { log('  world fx', (e as Error).message); }
       await save(SNAP_FILES['1d'], d1);
-      return `${Object.keys(d1).length}/${SYMBOLS.length} symbols`;
+      return `${Object.keys(d1).length - fx}/${SYMBOLS.length} symbols + ${fx}/${extra.length} other currencies`;
     });
     // Longer histories change slowly: rebuild them once a day (the workflow caches them between runs).
     for (const [file, range, interval] of [[SNAP_FILES['1y'], '1y', '1d'], [SNAP_FILES['5y'], '5y', '1wk']] as const) {

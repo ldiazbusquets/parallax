@@ -167,6 +167,14 @@ export const EVENTS: SourceDef<EventsData> = {
 };
 
 /** GDELT country codes (FIPS 10-4) for the countries on the map. */
+/** GDELT codes countries in FIPS 10-4. For a country missing from FIPS below, find its code from today's events:
+ *  the last part of each place name is the country (as GDELT spells it). */
+export function fipsByName(points: { place: string; fips: string }[], name: string): string | undefined {
+  const k = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+  const want = k(name), votes = new Map<string, number>();
+  for (const p of points) { const last = p.place.split(',').pop() ?? ''; if (k(last) === want && p.fips) votes.set(p.fips, (votes.get(p.fips) ?? 0) + 1); }
+  return [...votes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+}
 export const FIPS: Record<string, string> = {
   USA: 'US', CAN: 'CA', MEX: 'MX', BRA: 'BR', ARG: 'AR', CHL: 'CI', COL: 'CO', PER: 'PE', GBR: 'UK', DEU: 'GM', FRA: 'FR',
   ITA: 'IT', ESP: 'SP', NLD: 'NL', CHE: 'SZ', SWE: 'SW', DNK: 'DA', NOR: 'NO', FIN: 'FI', IRL: 'EI', PRT: 'PO', GRC: 'GR',

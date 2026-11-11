@@ -121,3 +121,20 @@ describe('screener prices', () => {
     expect(freshenRows(rows, q)).toEqual([{ ...rows[0], p: 90, ch: -10, mc: 900, t: 5 }, rows[1]]);
   });
 });
+
+import { fipsByName } from './events';
+import { fxFor, otherCountry } from './universe';
+import { WORLD } from './world';
+describe('every country on the map', () => {
+  it('has a code, name and currency for the shapes', () => {
+    expect(Object.keys(WORLD).length).toBeGreaterThan(230);
+    expect(WORLD['250']).toEqual(['FRA', 'FR', 'France', 'EUR']);
+    expect(fxFor('BGR')).toEqual(['EURUSD=X', 'EUR/USD']); // euro since Jan 2026
+    expect(fxFor('LKA')).toEqual(['LKR=X', 'USD/LKR']);
+    expect(fxFor('ECU')).toBeUndefined(); // dollarised
+    expect(otherCountry('LKA', 7, 81)).toMatchObject({ name: 'Sri Lanka', lat: 7, lng: 81 });
+  });
+  it('finds a GDELT country code from place names', () => {
+    expect(fipsByName([{ place: 'Colombo, Western, Sri Lanka', fips: 'CE' }, { place: 'Sri Lanka', fips: 'CE' }, { place: 'Chennai, India', fips: 'IN' }], 'Sri Lanka')).toBe('CE');
+  });
+});

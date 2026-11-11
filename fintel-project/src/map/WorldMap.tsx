@@ -7,9 +7,10 @@ import type { Feature, FeatureCollection } from 'geojson';
 import countriesUrl from 'world-atlas/countries-50m.json?url';
 import { isStaleQuote, useQuotes } from '@/data/yahoo';
 import { useSource } from '@/data/store';
-import { EVENT_CATS, EVENTS, FIPS, cameoLabel, vsNormal, type EventCat, type EventsData } from '@/data/events';
+import { EVENT_CATS, EVENTS, FIPS, fipsByName, cameoLabel, vsNormal, type EventCat, type EventsData } from '@/data/events';
 import { IMF, IMF_INDICATORS, POLICY, WB_INDICATORS, worldBankSource, type ImfData } from '@/data/sources';
-import { bondId, policyArea, COUNTRIES, type Country } from '@/data/universe';
+import { bondId, policyArea, COUNTRIES, otherCountry, type Country } from '@/data/universe';
+import { WORLD } from '@/data/world';
 import { HAZARDS, HAZARD_COLOR, HAZARD_LABEL, type Hazard } from '@/data/hazards';
 import { pickWindow, useEventWindow } from '@/ui/evwindow';
 import { LANES_URL, SHIPPING, weekAvg, yearBefore, type ShippingData } from '@/data/shipping';
@@ -65,12 +66,16 @@ function unwrap(f: Feature): Feature {
   return f;
 }
 let shapes: Promise<Map<string, Feature>> | null = null;
-/** Tracked countries' outlines, keyed by ISO3 (loaded once, ~230 KB gzipped, only when the map is shown). */
+/** Every country's outline, keyed by ISO3 (loaded once, ~230 KB gzipped, only when the map is shown). */
 function countryShapes() {
   shapes ||= fetch(countriesUrl).then((r) => r.json()).then((t: Topology<{ countries: GeometryCollection }>) => {
     const fc = feature(t, t.objects.countries) as FeatureCollection;
     const out = new Map<string, Feature>();
-    for (const f of fc.features) { const iso = ISO_BY_NUM[String(f.id)]; if (iso) out.set(iso, { ...unwrap(f), properties: { iso3: iso } }); }
+    for (const f of fc.features) {
+      const id = f.id == null ? '' : String(f.id).padStart(3, '0');
+      const iso = ISO_BY_NUM[id] ?? WORLD[id]?.[0] ?? (f.properties?.name === 'Kosovo' ? 'XKX' : undefined);
+      if (iso && !out.has(iso)) out.set(iso, { ...unwrap(f), properties: { iso3: iso } });
+    }
     return out;
   });
   return shapes;
@@ -189,10 +194,18 @@ function addBorderLayers(m: maplibregl.Map, all: Map<string, Feature> | null, se
   m.addLayer({ id: 'sel-line', type: 'line', source: 'sel-border', paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.95 } });
 }
 
-const WB = worldBankSource(COUNTRIES.map((c) => c.iso3).filter((c) => c !== 'TWN'));
+/** A tracked country, or any other one on the map (centred on its main landmass). */
+function pickCountry(iso3: string, shape: Feature | undefined): Country | undefined {
+  const t = COUNTRIES.find((x) => x.iso3 === iso3);
+  if (t) return t;
+  const b = shape ? mainBounds(shape) : null;
+  return otherCountry(iso3, b ? (b[0][1] + b[1][1]) / 2 : 0, b ? (b[0][0] + b[1][0]) / 2 : 0);
+}
+const WB = worldBankSource(['all']); // one call per indicator covers every country
 
 export function WorldMap() {
-  const symbols = useMemo(() => COUNTRIES.flatMap((c) => [c.index?.[0], c.fx?.[0]]).filter(Boolean) as string[], []);
+  const [sel, setSel] = useState<Country | null>(COUNTRIES[0]);
+  const symbols = useMemo(() => [...new Set([...COUNTRIES.flatMap((c) => [c.index?.[0], c.fx?.[0]]), sel?.fx?.[0]].filter(Boolean) as string[])], [sel?.fx?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
   const q = useQuotes(symbols);
   const wb = useSource(WB);
   const fred = useSource(FRED_MACRO);
@@ -208,7 +221,6 @@ export function WorldMap() {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [sel, setSel] = useState<Country | null>(COUNTRIES[0]);
   const hz = useSource(HAZARDS);
   const ship = useSource(SHIPPING);
   const [showShip, setShowShip] = useState(true);
@@ -275,7 +287,7 @@ export function WorldMap() {
     });
     m.on('mouseenter', 'events', () => { m.getCanvas().style.cursor = 'pointer'; });
     m.on('mouseleave', 'events', () => { m.getCanvas().style.cursor = ''; });
-    m.on('click', 'tracked-hit', (e) => { const top = ['events', 'hazards', 'choke', 'ports', 'cargo'].filter((l) => m.getLayer(l)); if (top.length && m.queryRenderedFeatures(e.point, { layers: top }).length) return; const iso = e.features?.[0]?.properties?.iso3 as string | undefined; const c = COUNTRIES.find((x) => x.iso3 === iso); if (c) setSel(c); });
+    m.on('click', 'tracked-hit', (e) => { const top = ['events', 'hazards', 'choke', 'ports', 'cargo'].filter((l) => m.getLayer(l)); if (top.length && m.queryRenderedFeatures(e.point, { layers: top }).length) return; const iso = e.features?.[0]?.properties?.iso3 as string | undefined; const c = iso ? pickCountry(iso, shapesRef.current?.get(iso)) : undefined; if (c) setSel(c); });
     m.on('mouseenter', 'tracked-hit', () => { m.getCanvas().style.cursor = 'pointer'; });
     m.on('mouseleave', 'tracked-hit', () => { m.getCanvas().style.cursor = ''; });
     m.on('error', (e) => { if (String(e.error?.message || '').match(/style|Failed to fetch/i)) setMapErr('Map tiles could not load.'); });
@@ -305,7 +317,7 @@ export function WorldMap() {
   useEffect(() => {
     const f = (e: Event) => {
       const { lat, lng, iso3 } = (e as CustomEvent<{ lat: number; lng: number; iso3?: string }>).detail;
-      const c = iso3 ? COUNTRIES.find((x) => x.iso3 === iso3) : undefined;
+      const c = iso3 ? pickCountry(iso3, shapesRef.current?.get(iso3)) : undefined;
       if (c) setSel(c);
       setTimeout(() => map.current?.flyTo({ center: [lng, lat], zoom: 5.5, padding: cardPad(), essential: true }), c ? 1700 : 0);
     };
@@ -402,7 +414,7 @@ export function WorldMap() {
                 {sel.bond && <tr title="Monthly average long-term (10-year) government bond yield, OECD via FRED. Change is versus a year earlier."><td>10Y gov't yield<br /><small className="faint">{bond ? new Date(bond.d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'OECD'}</small></td><td>{bond ? bond.v.toFixed(2) + '%' : '—'}</td><td>{bond && bondPrev ? <Chg v={(bond.v - bondPrev.v) * 100} dp={0} suffix="bp" invert /> : ''}</td></tr>}
               </tbody>
             </table>
-            <CountryEvents d={evd} fips={FIPS[sel.iso3]} win={win} trend={ev.data?.trend} />
+            <CountryEvents d={evd} fips={FIPS[sel.iso3] ?? fipsByName([...(ev.data?.week?.points ?? []), ...(evd?.points ?? [])], sel.name)} win={win} trend={ev.data?.trend} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 0 4px' }}>
               <span className="faint" style={{ fontSize: 12 }}>Fundamentals</span>
               <Tabs small value={fundTab} onChange={setFundTab} options={[['imf', 'IMF outlook'], ['wb', 'World Bank']]} />

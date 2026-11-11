@@ -93,6 +93,9 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Shipping (`src/data/shipping.ts`, CORS, live): IMF PortWatch ArcGIS `PortWatch_chokepoints_database` (28 chokepoints,
   lat/lon) and `Daily_Chokepoints_Data` (n_total, n_tanker…; 1,000 rows per page, page with resultOffset). Lanes:
   `public/data/shipping-lanes.json`, simplified from newzealandpaul/Shipping-Lanes (CC BY 4.0, keep the credit).
+- Map countries: every Natural Earth shape is clickable (`src/data/world.ts`: numeric → ISO3/ISO2/name/currency, generated
+  from i18n-iso-countries + countries-list, MIT). Countries outside `COUNTRIES` get IMF, World Bank (`country/all`), BIS (by ISO2),
+  USD/XXX (`WORLD_FX`, also in quotes-1d) and events (`fipsByName` when FIPS lacks them); no index or bond.
 - Installable: `public/manifest.webmanifest` + icons; `src/ui/install.ts` shows "Install app" on beforeinstallprompt.
 - Heatmap: squarified treemap (`src/ui/treemap.ts`, tested) of the largest US listings from the screener snapshot, sized by
   market value, one box per company, grouped by Nasdaq sector; Top 100/200/500.

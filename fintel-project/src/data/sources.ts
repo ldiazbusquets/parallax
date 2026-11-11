@@ -134,7 +134,7 @@ export function worldBankSource(iso3: string[]): SourceDef<WbData> {
     fetch: async () => {
       const out: WbData = {};
       const res = await Promise.allSettled(WB_INDICATORS.map((ind) =>
-        getJSON<[unknown, { countryiso3code: string; date: string; value: number | null }[] | null]>(`https://api.worldbank.org/v2/country/${iso3.join(';')}/indicator/${ind.id}?format=json&mrnev=1&per_page=200`)));
+        getJSON<[unknown, { countryiso3code: string; date: string; value: number | null }[] | null]>(`https://api.worldbank.org/v2/country/${iso3.join(';')}/indicator/${ind.id}?format=json&mrnev=1&per_page=400`)));
       res.forEach((r, i) => {
         if (r.status !== 'fulfilled') return;
         for (const row of r.value[1] || []) {

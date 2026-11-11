@@ -1,3 +1,4 @@
+import { WORLD_BY_ISO3 } from './world';
 // What the terminal tracks. Symbols are Yahoo Finance tickers. These are lists of instruments, not data.
 
 export type Inst = [symbol: string, label: string];
@@ -58,9 +59,23 @@ export const FOMC_2026 = ['2026-01-28', '2026-03-18', '2026-04-29', '2026-06-17'
 /** bond: OECD two-letter code for FRED's monthly 10-year government yield (IRLTLT01<code>M156N), where FRED has it. */
 export interface Country { iso3: string; name: string; lat: number; lng: number; index?: Inst; fx?: Inst; bond?: string }
 /** ISO-2 code used by the BIS (euro-area members share the ECB rate, area XM). */
-const EURO = new Set(['DEU', 'FRA', 'ITA', 'ESP', 'NLD', 'AUT', 'BEL', 'FIN', 'IRL', 'PRT', 'GRC']);
+const EURO = new Set(['DEU', 'FRA', 'ITA', 'ESP', 'NLD', 'AUT', 'BEL', 'FIN', 'IRL', 'PRT', 'GRC', 'SVK', 'SVN', 'EST', 'LVA', 'LTU', 'LUX', 'MLT', 'CYP', 'HRV', 'BGR']);
 const ISO2: Record<string, string> = { USA: 'US', CAN: 'CA', MEX: 'MX', BRA: 'BR', ARG: 'AR', CHL: 'CL', COL: 'CO', PER: 'PE', GBR: 'GB', CHE: 'CH', SWE: 'SE', DNK: 'DK', NOR: 'NO', POL: 'PL', CZE: 'CZ', HUN: 'HU', TUR: 'TR', ISR: 'IL', SAU: 'SA', ARE: 'AE', QAT: 'QA', KWT: 'KW', EGY: 'EG', MAR: 'MA', NGA: 'NG', GHA: 'GH', KEN: 'KE', ZAF: 'ZA', RUS: 'RU', IND: 'IN', PAK: 'PK', BGD: 'BD', CHN: 'CN', HKG: 'HK', JPN: 'JP', KOR: 'KR', TWN: 'TW', SGP: 'SG', IDN: 'ID', THA: 'TH', MYS: 'MY', VNM: 'VN', PHL: 'PH', AUS: 'AU', NZL: 'NZ' };
-export const policyArea = (c: Country) => (EURO.has(c.iso3) ? 'XM' : ISO2[c.iso3]);
+export const policyArea = (c: Country) => (EURO.has(c.iso3) ? 'XM' : ISO2[c.iso3] ?? WORLD_BY_ISO3[c.iso3]?.iso2);
+export const inEuro = (iso3: string) => EURO.has(iso3);
+/** Currency pair shown for a country: USD/XXX as Yahoo writes it (XXX=X), EUR/USD for the euro area, none for the US. */
+export function fxFor(iso3: string): Inst | undefined {
+  const cur = inEuro(iso3) ? 'EUR' : WORLD_BY_ISO3[iso3]?.currency;
+  if (!cur || cur === 'USD') return undefined;
+  return cur === 'EUR' ? ['EURUSD=X', 'EUR/USD'] : [`${cur}=X`, `USD/${cur}`];
+}
+/** Every currency pair the map can show for countries outside COUNTRIES (the site snapshots these too). */
+export const WORLD_FX = [...new Set(Object.keys(WORLD_BY_ISO3).map((k) => fxFor(k)?.[0]).filter((x): x is string => !!x))];
+/** A country outside COUNTRIES: name and currency from the world table; lat/lng is the middle of its shape. */
+export function otherCountry(iso3: string, lat: number, lng: number): Country | undefined {
+  const w = WORLD_BY_ISO3[iso3];
+  return w ? { iso3, name: w.name, lat, lng, fx: fxFor(iso3) } : undefined;
+}
 export const bondId = (c: Country) => (c.bond ? `IRLTLT01${c.bond}M156N` : undefined);
 export const COUNTRIES: Country[] = [
   { iso3: 'USA', name: 'United States', lat: 38.9, lng: -77.04, index: ['^GSPC', 'S&P 500'], fx: ['DX-Y.NYB', 'Dollar Index'], bond: 'US' },

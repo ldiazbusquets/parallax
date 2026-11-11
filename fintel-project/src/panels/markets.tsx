@@ -185,7 +185,8 @@ export function Heatmap({ onPick }: { onPick: (s: string) => void }) {
     ro.observe(el); setW(Math.floor(el.clientWidth));
     return () => ro.disconnect();
   }, [!!sc.data]); // eslint-disable-line react-hooks/exhaustive-deps -- the box mounts once data arrives
-  const H = W && W < 600 ? 460 : 540;
+  // more companies need more room for their labels
+  const H = (W && W < 600 ? 460 : 540) + (top === '500' ? 220 : top === '200' ? 80 : 0);
   const sectors = useMemo<HmSector[]>(() => {
     const pick: HmStock[] = [];
     for (const r of topCompanies(sc.data ?? [], +top, true)) pick.push({ s: r.s, n: r.n, p: r.p, ch: r.ch!, mc: r.mc! });
@@ -218,12 +219,15 @@ export function Heatmap({ onPick }: { onPick: (s: string) => void }) {
           <div key={sr.item.id} className="tm-s" style={{ left: sr.x, top: sr.y, width: sr.w, height: sr.h }}>
             {sr.head ? <div className="tm-h" title={`${sr.item.name}: ${sr.item.items.length} companies, $${big(sr.item.mc, 1)}, ${pct(sr.item.ch, 2)}`}><span>{sr.item.name}</span>{sr.w > 130 ? <Chg v={sr.item.ch} /> : null}</div> : null}
             {sr.tiles.map((t) => {
-              const w = t.w - 2, h = t.h - 2, size = Math.max(9, Math.min(26, Math.sqrt(w * h) / 4.2));
+              // the ticker's font is sized to fit the box's width (about 0.62em per character), never below 7px
+              const w = t.w - 2, h = t.h - 2, len = Math.max(2, t.item.s.length);
+              const size = Math.min(26, Math.sqrt(w * h) / 4.2, (w - 4) / (len * 0.62), h * 0.62);
+              const showT = size >= 7, showP = size >= 9 && h > size * 2.3 + 6;
               return (
                 <button key={t.item.s} className="tm-t" style={{ left: t.x - sr.x, top: t.y - sr.y, width: Math.max(0, w), height: Math.max(0, h), background: heat(t.item.ch) }}
                   title={`${t.item.n} (${t.item.s})\n${price(t.item.p)} · ${pct(t.item.ch, 2)} · $${big(t.item.mc, 1)} market value`} onClick={() => onPick(t.item.s)}>
-                  {w > 30 && h > 18 ? <b style={{ fontSize: size }}>{t.item.s}</b> : null}
-                  {w > 38 && h > 34 ? <span style={{ fontSize: Math.max(9, size * 0.62) }}>{pct(t.item.ch, 2)}</span> : null}
+                  {showT ? <b style={{ fontSize: size }}>{t.item.s}</b> : null}
+                  {showP ? <span style={{ fontSize: Math.max(8, size * 0.62) }}>{pct(t.item.ch, w > 60 ? 2 : 1)}</span> : null}
                 </button>
               );
             })}
