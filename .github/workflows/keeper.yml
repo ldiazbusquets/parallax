@@ -1,0 +1,37 @@
+name: Keep data fresh
+# GitHub fires the deploy's */15 schedule only every few hours on this repo, so the website's snapshot data went stale.
+# This job stays up ~5.7 h and starts "Deploy site" every 15 minutes (skipping while one is running or queued).
+# workflow_dispatch from GITHUB_TOKEN is allowed to start other workflows. The next scheduled or queued keeper
+# takes over when it ends (one at a time).
+on:
+  schedule:
+    - cron: '41 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: keeper
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Start a site update every 15 minutes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          end=$((SECONDS + 335 * 60))
+          while [ $SECONDS -lt $end ]; do
+            busy=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?per_page=10" --jq '[.workflow_runs[] | select(.status != "completed")] | length' || echo 1)
+            if [ "$busy" = "0" ]; then
+              gh api -X POST "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/dispatches" -f ref=main && echo "$(date -u +%H:%M) started a site update"
+            else
+              echo "$(date -u +%H:%M) an update is already running or queued"
+            fi
+            sleep 900
+          done

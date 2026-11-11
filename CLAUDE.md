@@ -121,6 +121,9 @@ The app lives in `fintel-project/`. See its README for running it and the source
   429 after ~10 quick calls: 3 s apart in the job. airplanes.live refuses without contact; OpenSky's CORS is its own origin.
   Only all-cargo airline designators (`CARGO_AIRLINES`) are counted. Coverage over mainland China is ~nil.
 - Chokepoint risk (`chokeRisk`): violent GDELT week points (CAMEO 18–20, not country centroids) within 250 km, flagged at 3+, plus orange/red hazards.
+- Freshness: GitHub fires the deploy's */15 cron only every few hours here, so `.github/workflows/keeper.yml` runs ~5.7 h
+  at a time and dispatches "Deploy site" every 15 min with GITHUB_TOKEN (allowed for workflow_dispatch), skipping while
+  one is running/queued. If it ever misbehaves, disable that workflow; nothing else depends on it.
 - App icon files are versioned (`icon-512-v2.png` …): Chrome and Windows cache icons by URL, so rename on any logo change.
 
 ## Look (v6, from Luis's Vexto reference)
@@ -135,7 +138,4 @@ The app lives in `fintel-project/`. See its README for running it and the source
 
 ## Ideas not built yet (roadmap)
 - Shipping, next step: live vessel positions via a free AIS feed (aisstream.io websocket, free key; would need a small relay).
-- Site freshness: GitHub's scheduler only fires the */15 deploy cron every few hours on this repo, so snapshot data
-  (quotes on the site, FRED, events…) can be hours old. Fix: an external pinger (e.g. cron-job.org) calling
-  `workflow_dispatch` with a fine-grained token Luis creates (Actions: write on this repo only).
 - Admin/health page across Luis's sites (uptime, deploy status, key expiry such as the Canvas token): pinned for later.

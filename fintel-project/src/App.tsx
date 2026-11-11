@@ -69,7 +69,7 @@ function Settings({ onClose }: { onClose: () => void }) {
           <button className="btn pri" onClick={() => { (Object.keys(vals) as KeyName[]).forEach((k) => setKey(k, vals[k])); onClose(); }}>Save keys</button>
         </div>
         <h2>DATA SOURCES</h2>
-        {STATIC && <p className="dim" style={{ fontSize: 12, marginBottom: 8 }}>Website mode: Yahoo, FRED, SEC and news come from a snapshot a GitHub job refreshes about every 15 minutes (company data daily). Treasury, CFTC, crypto, World Bank, Finnhub and Groq load live.</p>}
+        {STATIC && <p className="dim" style={{ fontSize: 12, marginBottom: 8 }}>Website mode: Yahoo, FRED, SEC, news and most other data come from a snapshot a GitHub job rebuilds about every 15 minutes (company files daily or weekly). Refresh loads the newest snapshot, so those cards keep the snapshot’s time; Treasury, CFTC, crypto, World Bank, hazards and shipping chokepoints load live and update at once.</p>}
         <ul className="srclist">
           {all.sort((a, b) => a.label.localeCompare(b.label)).map((s) => (
             <li key={s.id}><Dot status={s.status} /><span>{s.label} <span className="faint">· {s.provider}</span></span><span className="mono dim" style={{ fontSize: 11 }}>{s.updated ? ago(s.updated, now) : s.status}</span>{s.error && <small>{s.error}</small>}</li>
