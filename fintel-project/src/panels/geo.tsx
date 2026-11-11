@@ -157,7 +157,7 @@ export function AirCargo() {
   const ops = Object.entries((d?.planes ?? []).reduce<Record<string, number>>((m, p) => ((m[p.op] = (m[p.op] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
   return (
     <Panel id="p-aircargo" title="Air cargo" src={c} span="c4"
-      note="Aircraft flying for all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL, Kalitta, Cargojet and others) within about 150 nautical miles of each hub, from the adsb.lol community ADS-B feed. Freighters of passenger airlines can’t be told apart by callsign, so they aren’t counted. Coverage depends on volunteer receivers (thin over mainland China). Turn on Cargo flights on the map to see them.">
+      note="Aircraft flying for all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL, Kalitta, Cargojet and others) within about 150 nautical miles of each hub, from the adsb.lol community ADS-B feed. Freighters of passenger airlines can’t be told apart by callsign, so they aren’t counted. Coverage depends on volunteer receivers (thin over mainland China). Turn on Cargo on the map to see them.">
       {d && <>
         <div className="kpis">
           <div className="kpi"><span>Cargo aircraft</span><b><Big>{String(d.planes.length)}</Big></b><small>near {hubs.length} hubs</small></div>

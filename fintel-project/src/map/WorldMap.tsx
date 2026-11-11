@@ -187,7 +187,8 @@ function addOverlayLayers(m: maplibregl.Map, o: Overlays) {
   m.addLayer({ id: 'ports', type: 'circle', source: 'ports', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#cfe0ff', 'circle-opacity': 0.8, 'circle-radius': ['interpolate', ['linear'], ['get', 'now'], 0, 2.5, 60, 4, 140, 6], 'circle-stroke-color': '#0c0c0c', 'circle-stroke-width': 1 } });
   if (!m.hasImage('plane')) m.addImage('plane', planeIcon(), { sdf: true });
   m.addSource('cargo', { type: 'geojson', data: o.cargo });
-  m.addLayer({ id: 'cargo', type: 'symbol', source: 'cargo', layout: { visibility: vis(o.showCargo), 'icon-image': 'plane', 'icon-size': ['case', ['get', 'ground'], 0.42, 0.6], 'icon-rotate': ['get', 'track'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true }, paint: { 'icon-color': '#f1f1f1', 'icon-opacity': ['case', ['get', 'ground'], 0.55, 0.95], 'icon-halo-color': '#0c0c0c', 'icon-halo-width': 1 } });
+  m.addLayer({ id: 'cargo-glow', type: 'circle', source: 'cargo', layout: { visibility: vis(o.showCargo) }, paint: { 'circle-radius': 9, 'circle-color': '#a9c8e6', 'circle-opacity': 0.22, 'circle-blur': 0.6 } });
+  m.addLayer({ id: 'cargo', type: 'symbol', source: 'cargo', layout: { visibility: vis(o.showCargo), 'icon-image': 'plane', 'icon-size': ['case', ['get', 'ground'], 0.55, 0.8], 'icon-rotate': ['get', 'track'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true }, paint: { 'icon-color': '#f1f1f1', 'icon-opacity': ['case', ['get', 'ground'], 0.55, 0.95], 'icon-halo-color': '#0c0c0c', 'icon-halo-width': 1 } });
   m.addSource('hazards', { type: 'geojson', data: o.hazards });
   const hr: maplibregl.ExpressionSpecification = ['match', ['get', 'level'], 'red', 11, 'orange', 8, 6];
   m.addLayer({ id: 'hazards-glow', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-radius': ['*', hr, 2.4], 'circle-opacity': ['match', ['get', 'level'], 'red', 0.22, 0.12], 'circle-blur': 1 } });
@@ -247,6 +248,18 @@ export function WorldMap() {
   const ports = useSource(PORTS);
   const cargo = useSource(CARGO);
   const [showCargo, setShowCargo] = useState(false);
+  /** Turning Cargo on: if no plane is in view, fly to the hub with the most of them (the US hubs, most of the time). */
+  const showPlanes = () => {
+    const m = map.current, d = cargo.data;
+    if (!m || !d?.planes.length) return;
+    const b = m.getBounds();
+    if (d.planes.some((p) => b.contains([p.lng, p.lat]))) return;
+    const top = Object.entries(d.hubs).sort((a, b2) => (b2[1].air + b2[1].ground) - (a[1].air + a[1].ground))[0]?.[0];
+    const near = d.planes.filter((p) => p.hub === top);
+    if (!near.length) return;
+    const lng = near.map((p) => p.lng), lat = near.map((p) => p.lat);
+    m.fitBounds([[Math.min(...lng) - 2, Math.min(...lat) - 2], [Math.max(...lng) + 2, Math.max(...lat) + 2]], { padding: cardPad(), maxZoom: 6.5, duration: 1400 });
+  };
   const lanesRef = useRef<FeatureCollection>(EMPTY);
   const ovRef = useRef<Overlays>({ events: EMPTY, showEv: true, hazards: EMPTY, showHz: true, lanes: EMPTY, choke: EMPTY, showShip: true, ports: EMPTY, cargo: EMPTY, showCargo: false });
   const [mapErr, setMapErr] = useState('');
@@ -385,7 +398,7 @@ export function WorldMap() {
     (m.getSource('cargo') as maplibregl.GeoJSONSource | undefined)?.setData(ovRef.current.cargo);
     for (const id of ['hazards', 'hazards-glow']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showHz));
     for (const id of ['lanes', 'choke', 'choke-glow', 'ports']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showShip));
-    if (m.getLayer('cargo')) m.setLayoutProperty('cargo', 'visibility', vis(showCargo));
+    for (const id of ['cargo', 'cargo-glow']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis(showCargo));
   }, [hz.data, ship.data, ports.data, cargo.data, showHz, showShip, showCargo]);
 
   const iq = sel?.index ? q.data?.[sel.index[0]] : undefined;
@@ -397,13 +410,13 @@ export function WorldMap() {
   const bondPrev = bs && bs.length > 12 ? bs[bs.length - 13] : undefined;
   return (
     <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev, hz, ship, ports, ...(showCargo ? [cargo] : [])]} span="c8 mappanel" hasData
-      note={<>Country dots: today’s move in the main stock index (Yahoo Finance). Events: war, strikes and sanctions machine-coded from news by the GDELT Project, last 24 hours or 7 days; natural hazards from USGS, GDACS and NASA EONET, last 14 days. Shipping: chokepoint and port traffic (the 30 busiest ports) from IMF PortWatch; lanes © P. Benden (CC BY 4.0), from the CIA World Oceans map. Cargo flights: all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL and others) within about 150 nautical miles of 16 air-freight hubs, from the adsb.lol community ADS-B feed; on the website this is a snapshot, with its time in the popup. Country card: BIS, FRED/OECD, IMF and World Bank. Imagery © Esri.</>}>
+      note={<>Country dots: today’s move in the main stock index (Yahoo Finance). Events: war, strikes and sanctions machine-coded from news by the GDELT Project, last 24 hours or 7 days; natural hazards from USGS, GDACS and NASA EONET, last 14 days. Shipping: chokepoint and port traffic (the 30 busiest ports) from IMF PortWatch; lanes © P. Benden (CC BY 4.0), from the CIA World Oceans map. Cargo: planes of all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL and others) within about 150 nautical miles of 16 air-freight hubs, from the adsb.lol community ADS-B feed; on the website this is a snapshot, with its time in the popup. Country card: BIS, FRED/OECD, IMF and World Bank. Imagery © Esri.</>}>
       <div className="mapwrap">
         <div ref={box} className="mapcanvas" />
         {mapErr && <div className="maperr" role="status">{mapErr}</div>}
         <div className="maplayers">
           <button className="btn" onClick={() => setShowShip((v) => !v)} aria-pressed={showShip} title="Shipping lanes, chokepoint and port traffic (IMF PortWatch)">Shipping</button>
-          <button className="btn" onClick={() => setShowCargo((v) => !v)} aria-pressed={showCargo} title="Cargo airline flights near the big air-freight hubs (adsb.lol)">Cargo flights{showCargo && cargo.data ? ` · ${cargo.data.planes.length}` : ''}</button>
+          <button className="btn" onClick={() => { const on = !showCargo; setShowCargo(on); if (on) showPlanes(); }} aria-pressed={showCargo} title="Planes of cargo airlines (FedEx, UPS, DHL, Atlas…) near 16 big air-freight hubs, from adsb.lol: click one for its flight">Cargo{showCargo && cargo.data ? ` · ${cargo.data.planes.length}` : ''}</button>
           <button className="btn" onClick={() => { const on = !(showEv || showHz); setShowEv(on); setShowHz(on); }} aria-pressed={showEv || showHz} title="Market-moving events: war, unrest, sanctions (GDELT, 24h) and natural hazards (USGS, GDACS, NASA)">Events</button>
         </div>
         {(showEv || showHz) && <div className="evlegend" role="group" aria-label="Event types">
