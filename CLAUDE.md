@@ -143,5 +143,10 @@ The app lives in `fintel-project/`. See its README for running it and the source
   Add map layers once the style has parsed (`styleReady`), not `isStyleLoaded()`, which waits for every tile.
 
 ## Ideas not built yet (roadmap)
+- Commodities tab (Luis: "VERY important"): futures curves for oil, gas and gold from Yahoo contract months (contango /
+  backwardation); EIA weekly crude, gasoline and natural gas inventories vs the 5-year range (free EIA key as a repo secret);
+  gold/silver, copper/gold and gold vs real yields (DFII10) and the dollar; multi-year charts; CFTC positioning beside each
+  price; a commodities strip on Overview. Today: 16 contracts in the Commodities card, WTI/gold on the tape, COT for
+  crude, gas, gold, silver, copper and corn.
 - Shipping, next step: live vessel positions via a free AIS feed (aisstream.io websocket, free key; would need a small relay).
 - Admin/health page across Luis's sites (uptime, deploy status, key expiry such as the Canvas token): pinned for later.
