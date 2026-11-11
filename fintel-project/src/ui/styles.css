@@ -381,8 +381,19 @@ svg.chart text { font: 300 10.5px var(--mono); fill: #6a6a6a; }
 .co-grid { padding: 18px; gap: 14px; }
 
 /* network */
-.net svg { background: radial-gradient(circle at 50% 45%, #1c1c1c, #111 75%); border: 0; border-radius: 18px; }
-.net-side { border-left: 0; }
+.net svg { background: radial-gradient(120% 90% at 50% 40%, #17191c 0%, #0f1012 70%); border: 0; border-radius: 18px; touch-action: none; user-select: none; display: block; }
+.net-stage { position: relative; }
+.net-ctl { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+.net-ctl .btn { background: var(--glass, rgba(20,22,26,.72)); backdrop-filter: blur(10px); min-width: 30px; }
+.net-key { position: absolute; left: 14px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 7px 12px; border-radius: 999px; background: var(--glass, rgba(20,22,26,.72)); backdrop-filter: blur(10px); font: 400 11px var(--sans); color: var(--dim); }
+.net-key span { display: inline-flex; align-items: center; gap: 6px; }
+.net-key i { display: inline-block; }
+.k-dot { width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #2a2d31, #141518); box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
+.k-dot.s { width: 5px; height: 5px; background: rgba(200,210,220,.6); box-shadow: none; }
+.k-line { width: 18px; height: 2px; border-radius: 2px; background: rgba(169,200,230,.5); }
+.k-pill { width: 18px; height: 9px; border-radius: 9px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
+.k-pill.b { box-shadow: inset 0 0 0 1px #7ca9d4; }
+.net-side { border-left: 0; max-height: 640px; }
 .net-side h3 { font: 400 17px var(--sans); }
 
 /* brief */
