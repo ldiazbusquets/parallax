@@ -660,3 +660,6 @@ button.brand > span { background: linear-gradient(180deg, #f4f6f8 0%, #c9d1d8 55
 .wbar { display: inline-block; width: 46px; height: 5px; border-radius: 3px; background: var(--line); margin-right: 8px; vertical-align: middle; overflow: hidden; }
 .wbar > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 .riskdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 6px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(124,169,212,.18); }
+/* countries without a stock index here: smaller, neutral dots */
+.mk.mk-o { width: 9px; height: 9px; background: rgba(20,22,26,.85); border: 1.5px solid rgba(255,255,255,.6); box-shadow: 0 0 0 3px rgba(255,255,255,.05), 0 1px 5px rgba(0,0,0,.6); }
+.mk.mk-o:hover { border-color: #fff; }

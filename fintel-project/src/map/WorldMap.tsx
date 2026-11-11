@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { feature } from 'topojson-client';
+import polylabel from 'polylabel';
 import type { GeometryCollection, Topology } from 'topojson-specification';
 import type { Feature, FeatureCollection } from 'geojson';
 import countriesUrl from 'world-atlas/countries-50m.json?url';
@@ -93,7 +94,8 @@ function countryShapes() {
     // three small places missing at 1:50m, from the 1:10m file (4 KB)
     try {
       const extra = await fetch('./data/extra-shapes.json').then((r) => r.json()) as FeatureCollection;
-      for (const f of extra.features) { const iso = f.properties?.iso3 as string; if (iso && !out.has(iso)) out.set(iso, f); }
+      // `replace`: a more detailed shape for a place the 1:50m file draws too coarsely (Puerto Rico's Culebra)
+      for (const f of extra.features) { const iso = f.properties?.iso3 as string; if (iso && (!out.has(iso) || f.properties?.replace)) out.set(iso, { ...f, properties: { iso3: iso } }); }
     } catch { /* optional */ }
     return out;
   });
@@ -110,6 +112,17 @@ function mainBounds(f: Feature): [[number, number], [number, number]] | null {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const it of items) if (it.a >= max * 0.25) for (const [x, y] of it.ring) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   return Number.isFinite(x0) && x1 - x0 < 180 ? [[x0, y0], [x1, y1]] : null; // wider than 180° means it crosses the antimeridian
+}
+/** Where to put a country's dot when we have no capital for it: the visual centre (pole of inaccessibility) of
+ *  its largest landmass, which is always inside the shape. */
+export function labelPoint(f: Feature): [number, number] | null {
+  const g = f.geometry;
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+  const area = (r: number[][]) => Math.abs(r.reduce((a, p, i) => { const q = r[(i + 1) % r.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0) / 2);
+  const big = polys.reduce<number[][][] | null>((b, p) => (!b || area(p[0]) > area(b[0]) ? p : b), null);
+  if (!big) return null;
+  const p = polylabel(big, 0.05);
+  return Number.isFinite(p[0]) && Number.isFinite(p[1]) ? [p[0] > 180 ? p[0] - 360 : p[0], p[1]] : null;
 }
 // Countries whose shapes mislead a bounding box (Alaska and Hawaii, Russia across the antimeridian, Svalbard)
 const FIXED = new Set(['USA', 'RUS', 'NOR']);
@@ -228,8 +241,8 @@ function addBorderLayers(m: maplibregl.Map, all: Map<string, Feature> | null, se
 function pickCountry(iso3: string, shape: Feature | undefined): Country | undefined {
   const t = COUNTRIES.find((x) => x.iso3 === iso3);
   if (t) return t;
-  const b = shape ? mainBounds(shape) : null;
-  return otherCountry(iso3, b ? (b[0][1] + b[1][1]) / 2 : 0, b ? (b[0][0] + b[1][0]) / 2 : 0);
+  const lp = shape ? labelPoint(shape) : null;
+  return otherCountry(iso3, lp?.[1] ?? 0, lp?.[0] ?? 0);
 }
 const WB = worldBankSource(['all']); // one call per indicator covers every country
 
@@ -251,6 +264,7 @@ export function WorldMap() {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [markersReady, setMarkersReady] = useState(0);
   const hz = useSource(HAZARDS);
   const ship = useSource(SHIPPING);
   const [showShip, setShowShip] = useState(true);
@@ -288,7 +302,23 @@ export function WorldMap() {
     m.once('load', () => frame(m, selRef.current ?? COUNTRIES[0], undefined, false));
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     // outlines: drawn once the style and shapes are ready, and again after a basemap switch
-    m.on('load', () => { countryShapes().then((all) => { shapesRef.current = all; addBorderLayers(m, all, selRef.current?.iso3); if (selRef.current) frame(m, selRef.current, all.get(selRef.current.iso3), false); }).catch(() => { /* outlines are optional */ }); });
+    m.on('load', () => { countryShapes().then((all) => {
+      shapesRef.current = all; addBorderLayers(m, all, selRef.current?.iso3); if (selRef.current) frame(m, selRef.current, all.get(selRef.current.iso3), false);
+      // a dot for every other country too (smaller, neutral: there's no stock index to colour it by)
+      for (const [iso, f] of all) {
+        if (markers.current.has(iso)) continue;
+        const c = pickCountry(iso, f);
+        if (!c || (!c.lat && !c.lng)) continue;
+        const el = document.createElement('div');
+        el.className = 'mk mk-o';
+        el.title = c.name;
+        el.addEventListener('click', (e) => { e.stopPropagation(); setSel(c); });
+        for (const t of ['mousedown', 'mouseup', 'touchstart', 'touchend'] as const) el.addEventListener(t, (e) => e.stopPropagation());
+        markers.current.set(iso, el);
+        new maplibregl.Marker({ element: el }).setLngLat([c.lng, c.lat]).addTo(m);
+      }
+      setMarkersReady((n) => n + 1);
+    }).catch(() => { /* outlines are optional */ }); });
     m.on('styledata', () => { if (shapesRef.current) addBorderLayers(m, shapesRef.current, selRef.current?.iso3); addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
     m.on('load', () => { addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
     m.on('idle', () => { addEventLayers(m, evRef.current.data, evRef.current.show); addOverlayLayers(m, ovRef.current); });
@@ -373,9 +403,9 @@ export function WorldMap() {
       if (!el) continue;
       const iq = c.index ? q.data?.[c.index[0]] : undefined;
       el.style.background = heat(iq?.changePct ?? null, 2);
-      el.classList.toggle('sel', sel?.iso3 === c.iso3);
     }
-  }, [q.data, sel]);
+    for (const [iso, el] of markers.current) el.classList.toggle('sel', sel?.iso3 === iso);
+  }, [q.data, sel, markersReady]);
   // fly to the selected country so the map is always over it
   const first = useRef(true);
   useEffect(() => {
