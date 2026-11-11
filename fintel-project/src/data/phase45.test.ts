@@ -132,7 +132,9 @@ describe('every country on the map', () => {
     expect(fxFor('BGR')).toEqual(['EURUSD=X', 'EUR/USD']); // euro since Jan 2026
     expect(fxFor('LKA')).toEqual(['LKR=X', 'USD/LKR']);
     expect(fxFor('ECU')).toBeUndefined(); // dollarised
-    expect(otherCountry('LKA', 7, 81)).toMatchObject({ name: 'Sri Lanka', lat: 7, lng: 81 });
+    expect(otherCountry('LKA', 7, 81)).toMatchObject({ name: 'Sri Lanka', lat: 6.932, lng: 79.8578 }); // Colombo
+    expect(otherCountry('PRI', 18.2, -66.5)).toMatchObject({ lat: 18.44, lng: -66.13 }); // San Juan
+    expect(otherCountry('ATA', -80, 0)).toMatchObject({ lat: -80, lng: 0 }); // no capital: shape centre
   });
   it('finds a GDELT country code from place names', () => {
     expect(fipsByName([{ place: 'Colombo, Western, Sri Lanka', fips: 'CE' }, { place: 'Sri Lanka', fips: 'CE' }, { place: 'Chennai, India', fips: 'IN' }], 'Sri Lanka')).toBe('CE');

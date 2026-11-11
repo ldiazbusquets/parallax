@@ -97,8 +97,9 @@ The app lives in `fintel-project/`. See its README for running it and the source
   `public/data/shipping-lanes.json`, simplified from newzealandpaul/Shipping-Lanes (CC BY 4.0, keep the credit).
 - Map countries: every Natural Earth shape is clickable, plus overseas regions split off France/Norway/Netherlands at load
   (`OVERSEAS` boxes) and Gibraltar, Tuvalu, US Minor Outlying Is. from the 1:10m file (`public/data/extra-shapes.json`; `replace: true` swaps in
-  1:10m detail, used for Puerto Rico (Culebra) and the US Virgin Islands). Countries without a capital in `COUNTRIES` get a
-  small neutral dot at their largest landmass's visual centre (`labelPoint`, polylabel); (`src/data/world.ts`: numeric → ISO3/ISO2/name/currency, generated
+  1:10m detail, used for Puerto Rico (Culebra) and the US Virgin Islands). Countries outside `COUNTRIES` get a small neutral
+  dot at their capital (`CAPITALS` in world.ts: Natural Earth, else GeoNames CC BY; credit kept in the map note and README),
+  or at the visual centre (`labelPoint`, polylabel) for the few with no capital; (`src/data/world.ts`: numeric → ISO3/ISO2/name/currency, generated
   from i18n-iso-countries + countries-list, MIT). Countries outside `COUNTRIES` get IMF, World Bank (`country/all`), BIS (by ISO2),
   USD/XXX (`WORLD_FX`, also in quotes-1d) and events (`fipsByName` when FIPS lacks them); no index or bond.
 - Installable: `public/manifest.webmanifest` + icons; `src/ui/install.ts` shows "Install app" on beforeinstallprompt.

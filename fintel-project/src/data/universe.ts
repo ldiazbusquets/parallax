@@ -1,4 +1,4 @@
-import { WORLD_BY_ISO3 } from './world';
+import { CAPITALS, WORLD_BY_ISO3 } from './world';
 // What the terminal tracks. Symbols are Yahoo Finance tickers. These are lists of instruments, not data.
 
 export type Inst = [symbol: string, label: string];
@@ -71,10 +71,11 @@ export function fxFor(iso3: string): Inst | undefined {
 }
 /** Every currency pair the map can show for countries outside COUNTRIES (the site snapshots these too). */
 export const WORLD_FX = [...new Set(Object.keys(WORLD_BY_ISO3).map((k) => fxFor(k)?.[0]).filter((x): x is string => !!x))];
-/** A country outside COUNTRIES: name and currency from the world table; lat/lng is the middle of its shape. */
+/** A country outside COUNTRIES: name and currency from the world table, its dot at the capital (CAPITALS); the
+ *  given lat/lng (the shape's visual centre) is used only where there is no capital (Antarctica and a few others). */
 export function otherCountry(iso3: string, lat: number, lng: number): Country | undefined {
-  const w = WORLD_BY_ISO3[iso3];
-  return w ? { iso3, name: w.name, lat, lng, fx: fxFor(iso3) } : undefined;
+  const w = WORLD_BY_ISO3[iso3], cap = CAPITALS[iso3];
+  return w ? { iso3, name: w.name, lat: cap?.[1] ?? lat, lng: cap?.[2] ?? lng, fx: fxFor(iso3) } : undefined;
 }
 export const bondId = (c: Country) => (c.bond ? `IRLTLT01${c.bond}M156N` : undefined);
 export const COUNTRIES: Country[] = [

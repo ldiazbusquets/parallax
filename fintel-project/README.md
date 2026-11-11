@@ -89,6 +89,7 @@ SEC asks automated tools to identify themselves.
 | Fund holdings (latest 13F of ~20 well-known funds) | SEC EDGAR · OpenFIGI (CUSIP → ticker) | daily check |
 | 5%+ holders (Schedules 13D/13G) on company pages | SEC EDGAR | with the company file |
 | Earnings season beat rate (91 days, largest 500 and everyone) | Finnhub | 6 h |
+| Capitals of every country and territory (map dots) | Natural Earth (public domain) · GeoNames (CC BY 4.0) | fixed |
 | Full company pages for the 500 largest US companies | SEC EDGAR · Yahoo · Finnhub · FINRA | weekly (site) |
 | Shipping lanes (map) | Benden, Global Shipping Lanes (CC BY 4.0), from the CIA World Oceans map | static |
 | Short interest | FINRA consolidated short interest (twice monthly) + Reg SHO daily short volume | 12 h / daily |

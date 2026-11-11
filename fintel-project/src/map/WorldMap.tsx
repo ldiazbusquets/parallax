@@ -304,7 +304,7 @@ export function WorldMap() {
     // outlines: drawn once the style and shapes are ready, and again after a basemap switch
     m.on('load', () => { countryShapes().then((all) => {
       shapesRef.current = all; addBorderLayers(m, all, selRef.current?.iso3); if (selRef.current) frame(m, selRef.current, all.get(selRef.current.iso3), false);
-      // a dot for every other country too (smaller, neutral: there's no stock index to colour it by)
+      // a dot at every other country's capital too (smaller, neutral: there's no stock index to colour it by)
       for (const [iso, f] of all) {
         if (markers.current.has(iso)) continue;
         const c = pickCountry(iso, f);
@@ -450,7 +450,7 @@ export function WorldMap() {
   const bondPrev = bs && bs.length > 12 ? bs[bs.length - 13] : undefined;
   return (
     <Panel id="p-map" title="Global markets map" src={[q, wb, fred, pol, imf, ev, hz, ship, ports, ...(showCargo ? [cargo] : [])]} span="c8 mappanel" hasData
-      note={<>Country dots: today’s move in the main stock index (Yahoo Finance). Events: war, strikes and sanctions machine-coded from news by the GDELT Project, last 24 hours or 7 days; natural hazards from USGS, GDACS and NASA EONET, last 14 days. Shipping: chokepoint and port traffic (the 30 busiest ports) from IMF PortWatch; lanes © P. Benden (CC BY 4.0), from the CIA World Oceans map. Cargo: planes of all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL and others) within about 150 nautical miles of 16 air-freight hubs, from the adsb.lol community ADS-B feed; on the website this is a snapshot, with its time in the popup. Country card: BIS, FRED/OECD, IMF and World Bank. Imagery © Esri.</>}>
+      note={<>Country dots: today’s move in the main stock index (Yahoo Finance). Events: war, strikes and sanctions machine-coded from news by the GDELT Project, last 24 hours or 7 days; natural hazards from USGS, GDACS and NASA EONET, last 14 days. Shipping: chokepoint and port traffic (the 30 busiest ports) from IMF PortWatch; lanes © P. Benden (CC BY 4.0), from the CIA World Oceans map. Cargo: planes of all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL and others) within about 150 nautical miles of 16 air-freight hubs, from the adsb.lol community ADS-B feed; on the website this is a snapshot, with its time in the popup. Country card: BIS, FRED/OECD, IMF and World Bank. Capitals: Natural Earth and GeoNames (CC BY 4.0). Imagery © Esri.</>}>
       <div className="mapwrap">
         <div ref={box} className="mapcanvas" />
         {mapErr && <div className="maperr" role="status">{mapErr}</div>}
