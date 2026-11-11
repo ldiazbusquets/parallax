@@ -268,8 +268,8 @@ async function main() {
       const c = await fetchCargo(3000); // adsb.lol rate-limits bursts: one hub every 3 s
       await save('cargo.json', c, c.at);
       const busiest = Object.entries(c.hubs).sort((a, b) => (b[1].air + b[1].ground) - (a[1].air + a[1].ground))[0];
-      return `${c.planes.length} cargo aircraft near ${Object.values(c.hubs).filter((h) => h.ok).length}/${Object.keys(c.hubs).length} hubs · busiest ${busiest?.[0]} (${busiest ? busiest[1].air + busiest[1].ground : 0})`;
-    }, 2 * 60_000);
+      return `${c.planes.length} cargo aircraft (${c.planes.filter((p) => p.hub).length} near ${Object.values(c.hubs).filter((h) => h.ok).length}/${Object.keys(c.hubs).length} hubs) · busiest ${busiest?.[0]} (${busiest ? busiest[1].air + busiest[1].ground : 0})`;
+    }, 3 * 60_000);
   }
 
   if (want('ports')) {

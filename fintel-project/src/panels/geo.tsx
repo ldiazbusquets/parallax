@@ -157,10 +157,10 @@ export function AirCargo() {
   const ops = Object.entries((d?.planes ?? []).reduce<Record<string, number>>((m, p) => ((m[p.op] = (m[p.op] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
   return (
     <Panel id="p-aircargo" title="Air cargo" src={c} span="c4"
-      note="Aircraft flying for all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL, Kalitta, Cargojet and others) within about 150 nautical miles of each hub, from the adsb.lol community ADS-B feed. Freighters of passenger airlines can’t be told apart by callsign, so they aren’t counted. Coverage depends on volunteer receivers (thin over mainland China). Turn on Cargo on the map to see them.">
+      note="Aircraft flying for all-cargo airlines (FedEx, UPS, Atlas, Cargolux, DHL, Kalitta, Cargojet and others), from the adsb.lol community ADS-B feed: every freighter-type aircraft its receivers see worldwide, plus any aircraft within about 150 nautical miles of the 16 hubs; hub rows count what is within that distance. Freighters of passenger airlines (Emirates SkyCargo, Cathay, Qatar…) fly under the airline’s passenger callsign, so they can’t be told apart and aren’t counted, and much air cargo rides in passenger planes’ holds. Coverage depends on volunteer receivers: thin over oceans and mainland China, and the count swings with the time of day (FedEx and UPS fly mostly at night). Turn on Cargo on the map to see them.">
       {d && <>
         <div className="kpis">
-          <div className="kpi"><span>Cargo aircraft</span><b><Big>{String(d.planes.length)}</Big></b><small>near {hubs.length} hubs</small></div>
+          <div className="kpi"><span>Cargo aircraft</span><b><Big>{String(d.planes.length)}</Big></b><small>{d.worldwide ? 'seen worldwide' : `near ${hubs.length} hubs`}</small></div>
           <div className="kpi"><span>Airborne</span><b><Big>{String(d.planes.filter((p) => !p.ground).length)}</Big></b><small>{d.planes.filter((p) => p.ground).length} on the ground</small></div>
           <div className="kpi"><span>Snapshot</span><b style={{ fontSize: 15 }}>{ago(d.at, now)}</b><small>{new Date(d.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</small></div>
         </div>

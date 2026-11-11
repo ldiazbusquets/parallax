@@ -88,7 +88,8 @@ export const CARGO_HUBS: { code: string; name: string; lat: number; lng: number 
   { code: 'ICN', name: 'Seoul Incheon', lat: 37.46, lng: 126.44 }, { code: 'TPE', name: 'Taipei', lat: 25.08, lng: 121.23 },
 ];
 export interface Plane { hex: string; cs: string; op: string; type: string; lat: number; lng: number; alt: number | null; ground: boolean; track: number | null; hub: string }
-export interface CargoData { at: number; planes: Plane[]; hubs: Record<string, { air: number; ground: number; ok: boolean }> }
+/** `hub` is '' for aircraft away from the hubs (en route). `worldwide`: the per-type worldwide queries answered. */
+export interface CargoData { at: number; planes: Plane[]; hubs: Record<string, { air: number; ground: number; ok: boolean }>; worldwide?: boolean }
 interface AdsbAc { hex: string; flight?: string; t?: string; lat?: number; lon?: number; alt_baro?: number | 'ground'; track?: number }
 /** Keep cargo-airline aircraft; the same aircraft near two hubs counts once (at the first hub). */
 export function cargoFrom(hub: string, ac: AdsbAc[], seen: Set<string>): Plane[] {
@@ -101,19 +102,33 @@ export function cargoFrom(hub: string, ac: AdsbAc[], seen: Set<string>): Plane[]
   }
   return out;
 }
+/** Freighter aircraft types. adsb.lol's /v2/type/<code> lists every aircraft of a type its receivers see worldwide;
+ *  the cargo-airline filter then keeps the freighter operators (many of these types also fly passengers). */
+export const FREIGHTER_TYPES = ['B763', 'B77L', 'B748', 'B744', 'B752', 'MD11', 'A306', 'A332', 'B762', 'B738', 'B77W'];
+/** The hub within ~150 nm (278 km) of a position, if any. */
+export const nearHub = (lat: number, lng: number) => CARGO_HUBS.find((h) => km(h, { lat, lng }) <= 278)?.code ?? '';
+export function hubCounts(planes: Plane[], answered: Set<string>): CargoData['hubs'] {
+  const out: CargoData['hubs'] = {};
+  for (const h of CARGO_HUBS) { const p = planes.filter((x) => x.hub === h.code); out[h.code] = { air: p.filter((x) => !x.ground).length, ground: p.filter((x) => x.ground).length, ok: answered.has(h.code) }; }
+  return out;
+}
 export async function fetchCargo(gapMs = 3000): Promise<CargoData> {
-  const planes: Plane[] = [], hubs: CargoData['hubs'] = {}, seen = new Set<string>();
-  for (const h of CARGO_HUBS) {
-    try {
-      const j = await getJSON<{ ac?: AdsbAc[] }>(`${HOST.adsb}/v2/point/${h.lat}/${h.lng}/150`, { timeout: 15000 });
-      const p = cargoFrom(h.code, j.ac ?? [], seen);
-      planes.push(...p);
-      hubs[h.code] = { air: p.filter((x) => !x.ground).length, ground: p.filter((x) => x.ground).length, ok: true };
-    } catch { hubs[h.code] = { air: 0, ground: 0, ok: false }; }
-    await new Promise((r) => setTimeout(r, gapMs)); // adsb.lol rate-limits bursts
+  const planes: Plane[] = [], seen = new Set<string>(), answered = new Set<string>();
+  const wait = () => new Promise((r) => setTimeout(r, gapMs)); // adsb.lol rate-limits bursts
+  // 1) worldwide, by freighter type
+  let typesOk = 0;
+  for (const t of FREIGHTER_TYPES) {
+    try { const j = await getJSON<{ ac?: AdsbAc[] }>(`${HOST.adsb}/v2/type/${t}`, { timeout: 15000 }); planes.push(...cargoFrom('', j.ac ?? [], seen)); typesOk++; } catch { /* next type */ }
+    await wait();
   }
-  if (!Object.values(hubs).some((x) => x.ok)) throw new Error('adsb.lol did not answer');
-  return { at: Date.now(), planes, hubs };
+  // 2) around each hub, any type (catches feeder aircraft such as ATRs and Cessnas flown for FedEx)
+  for (const h of CARGO_HUBS) {
+    try { const j = await getJSON<{ ac?: AdsbAc[] }>(`${HOST.adsb}/v2/point/${h.lat}/${h.lng}/150`, { timeout: 15000 }); planes.push(...cargoFrom(h.code, j.ac ?? [], seen)); answered.add(h.code); } catch { /* hub shows "no answer" */ }
+    await wait();
+  }
+  if (!typesOk && !answered.size) throw new Error('adsb.lol did not answer');
+  for (const p of planes) p.hub = nearHub(p.lat, p.lng);
+  return { at: Date.now(), planes, hubs: hubCounts(planes, answered), worldwide: typesOk > 0 };
 }
 export const CARGO: SourceDef<CargoData> = {
   id: 'adsb:cargo', label: 'Cargo flights', provider: 'adsb.lol (ADS-B Exchange community feed)', every: 15 * 60_000,

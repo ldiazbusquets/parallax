@@ -343,7 +343,7 @@ export function WorldMap() {
       const p = e.features?.[0]?.properties as { cs: string; op: string; type: string; alt: number; ground: boolean | string; hub: string; at: number } | undefined;
       if (!p) return;
       const ground = p.ground === true || p.ground === 'true', hub = CARGO_HUBS.find((h) => h.code === p.hub);
-      popup(m, e.lngLat, `${p.cs} · ${p.op}`, [`${p.type ? p.type + ' · ' : ''}${ground ? 'on the ground' : Number(p.alt) >= 0 ? Number(p.alt).toLocaleString('en-US') + ' ft' : 'airborne'} · near ${hub?.name ?? p.hub}`, `Position at ${new Date(Number(p.at)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`], { url: `https://globe.adsb.lol/?callsign=${encodeURIComponent(p.cs)}`, text: 'adsb.lol ↗' });
+      popup(m, e.lngLat, `${p.cs} · ${p.op}`, [`${p.type ? p.type + ' · ' : ''}${ground ? 'on the ground' : Number(p.alt) >= 0 ? Number(p.alt).toLocaleString('en-US') + ' ft' : 'airborne'} · ${hub ? 'near ' + hub.name : 'en route'}`, `Position at ${new Date(Number(p.at)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`], { url: `https://globe.adsb.lol/?callsign=${encodeURIComponent(p.cs)}`, text: 'adsb.lol ↗' });
     });
     for (const id of ['hazards', 'choke', 'ports', 'cargo']) { m.on('mouseenter', id, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', id, () => { m.getCanvas().style.cursor = ''; }); }
     m.on('click', 'events', (e) => {

@@ -123,7 +123,9 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Ports (Phase 5, `src/data/trade.ts`, snapshot `ports.json` daily; live locally): PortWatch `PortWatch_ports_database` (top 30 by vessel_count_total) and
   `Daily_Ports_Data` (portcalls, import, export in tonnes; `date` is DateOnly, `portid IN (...)` works). Daily_Ports_Data takes 20–30 s per 1,000-row page, too slow for
   browsers; don't pass orderByFields on the daily tables (sort client-side) and query only the windows needed.
-- Cargo flights: adsb.lol `/v2/point/<lat>/<lon>/150` per hub (no CORS: relay `/px/adsb`, snapshot `cargo.json`). It returns
+- Cargo flights: adsb.lol `/v2/type/<ICAO type>` for `FREIGHTER_TYPES` (worldwide, ~250 cargo-airline aircraft) plus
+  `/v2/point/<lat>/<lon>/150` per hub (feeders); `hub` is set by distance (≤278 km), '' = en route. `/v2/all` doesn't exist and
+  re-api `?all` needs a key. Also available: `/v2/mil` (military aircraft that broadcast ADS-B). (no CORS: relay `/px/adsb`, snapshot `cargo.json`). It returns
   429 after ~10 quick calls: 3 s apart in the job. airplanes.live refuses without contact; OpenSky's CORS is its own origin.
   Only all-cargo airline designators (`CARGO_AIRLINES`) are counted. Coverage over mainland China is ~nil.
 - Chokepoint risk (`chokeRisk`): violent GDELT week points (CAMEO 18–20, not country centroids) within 250 km, flagged at 3+, plus orange/red hazards.
