@@ -51,8 +51,10 @@ The app lives in `fintel-project/`. See its README for running it and the source
   `Accept: application/vnd.sdmx.data+csv;version=1.0.0`. No CORS (relay `/px/bis`, snapshot `bis.json`). Euro area = XM.
 - IMF WEO: `imf.org/external/datamapper/api/v1/<INDICATOR>` (all countries, all years; `periods` is ignored).
   No CORS (relay `/px/imf`, snapshot `imf.json`). Aggregates: WEOWORLD, ADVEC, OEMDC, EURO. Includes Taiwan.
-  imf.org returns 403 to GitHub Actions, so the job publishes `scripts/imf-weo-saved.json` (captured from the same
-  API in a browser, SHA-256 verified, 2026-11-07). Refresh it each April/October when a new WEO edition appears.
+  imf.org returns 403 to GitHub Actions, but the IMF data portal's SDMX API does not: the job uses
+  `api.imf.org/external/sdmx/2.1/data/IMF.RES,WEO/.<IND+IND>.A?startPeriod=…&detail=dataonly` with the sdmx csv Accept header
+  (`parseWeoCsv`: ~200 economies, full precision → rounded like DataMapper, NGDPD in dollars → billions; aggregates G001 World,
+  G110 Advanced, G200 EMDE, G163 Euro area; Kosovo = KOS). `scripts/imf-weo-saved.json` (60 economies) is the last fallback.
   DBnomics' IMF mirror stops at WEO 2024-10: don't use it.
 - GDELT: the GEO 2.0 API is gone (404) and the DOC API allows 1 request / 5 s, so events come from the raw 2.0
   event files: `http://data.gdeltproject.org/gdeltv2/<YYYYMMDDHHMM00>.export.CSV.zip` every 15 min (the newest can

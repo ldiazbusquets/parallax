@@ -138,3 +138,19 @@ describe('every country on the map', () => {
     expect(fipsByName([{ place: 'Colombo, Western, Sri Lanka', fips: 'CE' }, { place: 'Sri Lanka', fips: 'CE' }, { place: 'Chennai, India', fips: 'IN' }], 'Sri Lanka')).toBe('CE');
   });
 });
+
+import { parseWeoCsv } from './sources';
+describe('IMF WEO from api.imf.org', () => {
+  it('rounds like DataMapper, renames aggregates and keeps only the asked years', () => {
+    const rows = ['DATAFLOW,COUNTRY,INDICATOR,FREQUENCY,TIME_PERIOD,OBS_VALUE,SCALE',
+      'IMF.RES:WEO(9.0.0),USA,NGDP_RPCH,A,2025,2.344098,', 'IMF.RES:WEO(9.0.0),USA,NGDPD,A,2025,30861300000000,', 'IMF.RES:WEO(9.0.0),USA,NGDP_RPCH,A,2019,2.1,',
+      'IMF.RES:WEO(9.0.0),G001,NGDP_RPCH,A,2025,3.504572,', 'IMF.RES:WEO(9.0.0),KOS,PCPIPCH,A,2025,3.851147,', 'IMF.RES:WEO(9.0.0),GX123,NGDP_RPCH,A,2025,1,'];
+    for (let i = 0; i < 100; i++) rows.push(`IMF.RES:WEO(9.0.0),${'A' + String.fromCharCode(65 + (i % 26)) + String.fromCharCode(65 + Math.floor(i / 26))},LUR,A,2025,5,`);
+    const d = parseWeoCsv(rows.join('\n'), [2024, 2025, 2026]);
+    expect(d.data.USA).toEqual({ NGDP_RPCH: { '2025': 2.3 }, NGDPD: { '2025': 30861.3 } });
+    expect(d.data.WEOWORLD.NGDP_RPCH['2025']).toBe(3.5);
+    expect(d.data.XKX.PCPIPCH['2025']).toBe(3.9);
+    expect(d.data.GX123).toBeUndefined();
+    expect(d.edition).toBe('World Economic Outlook (IMF data portal, v9.0.0)');
+  });
+});

@@ -403,6 +403,35 @@ export async function imfWeo(): Promise<ImfData> {
   } catch { /* label only */ }
   return shapeImf(raw, years, edition);
 }
+// imf.org's DataMapper refuses GitHub's servers, but the IMF data portal's SDMX API (api.imf.org) answers them.
+// Same WEO numbers at full precision; rounded here like DataMapper (1 decimal, GDP in USD billions).
+const SDMX_AGG: Record<string, string> = { G001: 'WEOWORLD', G110: 'ADVEC', G200: 'OEMDC', G163: 'EURO', KOS: 'XKX' };
+export function parseWeoCsv(csv: string, years: number[]): ImfData {
+  const lines = csv.split(/\r?\n/), head = lines[0].split(',');
+  const c = { flow: head.indexOf('DATAFLOW'), ctry: head.indexOf('COUNTRY'), ind: head.indexOf('INDICATOR'), t: head.indexOf('TIME_PERIOD'), v: head.indexOf('OBS_VALUE') };
+  if (c.ctry < 0 || c.ind < 0 || c.v < 0) throw new Error('unexpected IMF CSV');
+  const data: ImfData['data'] = {}, want = new Set(years.map(String)), ids = new Set(IMF_INDICATORS.map((i) => i.id));
+  let flow = '';
+  for (const l of lines.slice(1)) {
+    const x = l.split(',');
+    if (x.length <= c.v || !ids.has(x[c.ind]) || !want.has(x[c.t])) continue;
+    const raw = Number(x[c.v]);
+    if (x[c.v] === '' || !Number.isFinite(raw)) continue;
+    const iso = SDMX_AGG[x[c.ctry]] ?? x[c.ctry];
+    if (!/^[A-Z]{3}$/.test(iso) && !Object.values(SDMX_AGG).includes(iso)) continue;
+    const v = x[c.ind] === 'NGDPD' ? Math.round(raw / 1e6) / 1e3 : x[c.ind] === 'NGDPDPC' ? Math.round(raw * 1000) / 1000 : Math.round(raw * 10) / 10;
+    ((data[iso] ||= {})[x[c.ind]] ||= {})[x[c.t]] = v;
+    flow ||= x[c.flow] ?? '';
+  }
+  if (Object.keys(data).length < 100) throw new Error(`IMF CSV had only ${Object.keys(data).length} economies`);
+  const ver = flow.match(/\(([\d.]+)\)/)?.[1];
+  return { edition: `World Economic Outlook${ver ? ` (IMF data portal, v${ver})` : ''}`, years, data };
+}
+export async function imfWeoSdmx(): Promise<ImfData> {
+  const y = new Date().getFullYear(), years = [y - 2, y - 1, y, y + 1, y + 2];
+  const t = await getText(`https://api.imf.org/external/sdmx/2.1/data/IMF.RES,WEO/.${IMF_INDICATORS.map((i) => i.id).join('+')}.A?startPeriod=${years[0]}&endPeriod=${years[4]}&detail=dataonly`, { headers: { Accept: 'application/vnd.sdmx.data+csv;version=1.0.0' }, timeout: 60000 });
+  return parseWeoCsv(t, years);
+}
 export const IMF: SourceDef<ImfData> = {
   id: 'imf:weo', label: 'IMF outlook', provider: 'IMF WEO', every: 12 * 60 * 60_000,
   asOf: STATIC ? snapTime('imf.json') : undefined,

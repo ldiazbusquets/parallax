@@ -12,7 +12,7 @@ import { figiTickers, FUNDS, FUNDS_V, tickerByName, latest13F, shapeHoldings, ty
 import { unzipSync, strFromU8 } from 'fflate';
 import { parseGdeltExport, summariseWindow, type Ev } from '../src/data/events';
 import { fredMany, DAILY_IDS, MACRO_IDS, FRED_SINCE } from '../src/data/fred';
-import { EDGAR_FORMS, edgarUrl, edgarSnapName, FEEDS, finnhubEarnings, finnhubIpos, finnhubSeason, groqBrief, GROQ_MODEL, bisPolicy, imfWeo, finnhubCompanyNews } from '../src/data/sources';
+import { EDGAR_FORMS, edgarUrl, edgarSnapName, FEEDS, finnhubEarnings, finnhubIpos, finnhubSeason, groqBrief, GROQ_MODEL, bisPolicy, imfWeo, imfWeoSdmx, finnhubCompanyNews } from '../src/data/sources';
 import { briefPrompt } from '../src/data/brief';
 import { buildCompany, buildNetwork, coSnapName, type CompanyData } from '../src/data/company';
 import { COMMODITIES, COUNTRIES, DEFAULT_WATCHLIST, FX, HEATMAP, INDICES, SECTORS, TAPE, VOL, WORLD_FX } from '../src/data/universe';
@@ -174,6 +174,7 @@ async function main() {
 
   if (want('imf')) {
     await step('imf', async () => {
+      try { const d = await imfWeoSdmx(); await save('imf.json', d); return `${Object.keys(d.data).length} economies · ${d.edition} · US GDP ${d.data.USA?.NGDP_RPCH?.[String(new Date().getFullYear())]}% this year (api.imf.org)`; } catch (e) { log('  api.imf.org', (e as Error).message); }
       try { const d = await imfWeo(); await save('imf.json', d); return `${Object.keys(d.data).length} economies · ${d.edition}`; } catch (e) {
         // imf.org refuses GitHub's servers. Publish the copy saved from imf.org (scripts/imf-weo-saved.json, same
         // API, checksum-verified); refresh it when the IMF releases a new edition (April and October).
