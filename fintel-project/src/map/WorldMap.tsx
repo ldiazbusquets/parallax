@@ -174,25 +174,35 @@ function planeIcon(): ImageData {
 }
 interface Overlays { events: FeatureCollection; showEv: boolean; hazards: FeatureCollection; showHz: boolean; lanes: FeatureCollection; choke: FeatureCollection; showShip: boolean; ports: FeatureCollection; cargo: FeatureCollection; showCargo: boolean }
 const vis = (on: boolean) => (on ? 'visible' : 'none') as 'visible' | 'none';
+let addingOverlays = false;
+/** Idempotent: every source/layer is added only if missing. addImage fires 'styledata' synchronously, which calls
+ *  this again; the re-entry guard stops that nested call (it used to throw and leave hazards and cargo unadded). */
 function addOverlayLayers(m: maplibregl.Map, o: Overlays) {
-  if (!styleReady(m) || m.getSource('hazards')) return;
-  const before = m.getLayer('sel-fill') ? 'sel-fill' : undefined;
-  m.addSource('lanes', { type: 'geojson', data: o.lanes, attribution: 'Shipping lanes: P. Benden, CC BY 4.0 · Chokepoints: IMF PortWatch' });
-  m.addLayer({ id: 'lanes', type: 'line', source: 'lanes', layout: { visibility: vis(o.showShip), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9fc3ff', 'line-opacity': ['match', ['get', 'type'], 'Major', 0.55, 'Middle', 0.32, 0.18], 'line-width': ['match', ['get', 'type'], 'Major', 1.6, 'Middle', 1, 0.6] } }, before);
-  m.addSource('choke', { type: 'geojson', data: o.choke });
-  const cr: maplibregl.ExpressionSpecification = ['interpolate', ['linear'], ['get', 'now'], 0, 4, 50, 7, 150, 11, 300, 15];
-  m.addLayer({ id: 'choke-glow', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#9fc3ff', 'circle-radius': ['*', cr, 1.9], 'circle-opacity': 0.12, 'circle-blur': 1 } }, before);
-  m.addLayer({ id: 'choke', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#0c0c0c', 'circle-opacity': 0.55, 'circle-radius': cr, 'circle-stroke-color': '#cfe0ff', 'circle-stroke-width': 1.6 } });
-  m.addSource('ports', { type: 'geojson', data: o.ports });
-  m.addLayer({ id: 'ports', type: 'circle', source: 'ports', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#cfe0ff', 'circle-opacity': 0.8, 'circle-radius': ['interpolate', ['linear'], ['get', 'now'], 0, 2.5, 60, 4, 140, 6], 'circle-stroke-color': '#0c0c0c', 'circle-stroke-width': 1 } });
+  if (!styleReady(m) || addingOverlays || m.getLayer('hazards')) return;
+  addingOverlays = true;
+  try { addOverlaysOnce(m, o); } finally { addingOverlays = false; }
+}
+function addOverlaysOnce(m: maplibregl.Map, o: Overlays) {
+  const src = m.addSource.bind(m), lyr = m.addLayer.bind(m);
+  const addSource: typeof m.addSource = (id, spec) => (m.getSource(id) ? m : src(id, spec));
+  const addLayer: typeof m.addLayer = (spec, before) => (m.getLayer(spec.id) ? m : lyr(spec, before));
   if (!m.hasImage('plane')) m.addImage('plane', planeIcon(), { sdf: true });
-  m.addSource('cargo', { type: 'geojson', data: o.cargo });
-  m.addLayer({ id: 'cargo-glow', type: 'circle', source: 'cargo', layout: { visibility: vis(o.showCargo) }, paint: { 'circle-radius': 9, 'circle-color': '#a9c8e6', 'circle-opacity': 0.22, 'circle-blur': 0.6 } });
-  m.addLayer({ id: 'cargo', type: 'symbol', source: 'cargo', layout: { visibility: vis(o.showCargo), 'icon-image': 'plane', 'icon-size': ['case', ['get', 'ground'], 0.55, 0.8], 'icon-rotate': ['get', 'track'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true }, paint: { 'icon-color': '#f1f1f1', 'icon-opacity': ['case', ['get', 'ground'], 0.55, 0.95], 'icon-halo-color': '#0c0c0c', 'icon-halo-width': 1 } });
-  m.addSource('hazards', { type: 'geojson', data: o.hazards });
+  const before = m.getLayer('sel-fill') ? 'sel-fill' : undefined;
+  addSource('lanes', { type: 'geojson', data: o.lanes, attribution: 'Shipping lanes: P. Benden, CC BY 4.0 · Chokepoints: IMF PortWatch' });
+  addLayer({ id: 'lanes', type: 'line', source: 'lanes', layout: { visibility: vis(o.showShip), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9fc3ff', 'line-opacity': ['match', ['get', 'type'], 'Major', 0.55, 'Middle', 0.32, 0.18], 'line-width': ['match', ['get', 'type'], 'Major', 1.6, 'Middle', 1, 0.6] } }, before);
+  addSource('choke', { type: 'geojson', data: o.choke });
+  const cr: maplibregl.ExpressionSpecification = ['interpolate', ['linear'], ['get', 'now'], 0, 4, 50, 7, 150, 11, 300, 15];
+  addLayer({ id: 'choke-glow', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#9fc3ff', 'circle-radius': ['*', cr, 1.9], 'circle-opacity': 0.12, 'circle-blur': 1 } }, before);
+  addLayer({ id: 'choke', type: 'circle', source: 'choke', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#0c0c0c', 'circle-opacity': 0.55, 'circle-radius': cr, 'circle-stroke-color': '#cfe0ff', 'circle-stroke-width': 1.6 } });
+  addSource('ports', { type: 'geojson', data: o.ports });
+  addLayer({ id: 'ports', type: 'circle', source: 'ports', layout: { visibility: vis(o.showShip) }, paint: { 'circle-color': '#cfe0ff', 'circle-opacity': 0.8, 'circle-radius': ['interpolate', ['linear'], ['get', 'now'], 0, 2.5, 60, 4, 140, 6], 'circle-stroke-color': '#0c0c0c', 'circle-stroke-width': 1 } });
+  addSource('cargo', { type: 'geojson', data: o.cargo });
+  addLayer({ id: 'cargo-glow', type: 'circle', source: 'cargo', layout: { visibility: vis(o.showCargo) }, paint: { 'circle-radius': 9, 'circle-color': '#a9c8e6', 'circle-opacity': 0.22, 'circle-blur': 0.6 } });
+  addLayer({ id: 'cargo', type: 'symbol', source: 'cargo', layout: { visibility: vis(o.showCargo), 'icon-image': 'plane', 'icon-size': ['case', ['get', 'ground'], 0.55, 0.8], 'icon-rotate': ['get', 'track'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true }, paint: { 'icon-color': '#f1f1f1', 'icon-opacity': ['case', ['get', 'ground'], 0.55, 0.95], 'icon-halo-color': '#0c0c0c', 'icon-halo-width': 1 } });
+  addSource('hazards', { type: 'geojson', data: o.hazards });
   const hr: maplibregl.ExpressionSpecification = ['match', ['get', 'level'], 'red', 11, 'orange', 8, 6];
-  m.addLayer({ id: 'hazards-glow', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-radius': ['*', hr, 2.4], 'circle-opacity': ['match', ['get', 'level'], 'red', 0.22, 0.12], 'circle-blur': 1 } });
-  m.addLayer({ id: 'hazards', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-opacity': 0.25, 'circle-radius': hr, 'circle-stroke-color': HAZARD_COLOR, 'circle-stroke-width': ['match', ['get', 'level'], 'red', 2.4, 1.6] } });
+  addLayer({ id: 'hazards-glow', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-radius': ['*', hr, 2.4], 'circle-opacity': ['match', ['get', 'level'], 'red', 0.22, 0.12], 'circle-blur': 1 } });
+  addLayer({ id: 'hazards', type: 'circle', source: 'hazards', layout: { visibility: vis(o.showHz) }, paint: { 'circle-color': HAZARD_COLOR, 'circle-opacity': 0.25, 'circle-radius': hr, 'circle-stroke-color': HAZARD_COLOR, 'circle-stroke-width': ['match', ['get', 'level'], 'red', 2.4, 1.6] } });
 }
 function popup(m: maplibregl.Map, at: maplibregl.LngLat, title: string, lines: string[], link?: { url: string; text: string }) {
   const box = document.createElement('div');
