@@ -128,7 +128,7 @@ The app lives in `fintel-project/`. See its README for running it and the source
   re-api `?all` needs a key. Also available: `/v2/mil` (military aircraft that broadcast ADS-B). (no CORS: relay `/px/adsb`, snapshot `cargo.json`). It returns
   429 after ~10 quick calls: 3 s apart in the job. airplanes.live refuses without contact; OpenSky's CORS is its own origin.
   Only all-cargo airline designators (`CARGO_AIRLINES`) are counted. Coverage over mainland China is ~nil.
-- Military aircraft (`MIL`, `milFrom` in trade.ts): adsb.lol `/v2/mil` (~400 aircraft its database flags military; only those
+- Military aircraft (`MIL`, `milFrom` in trade.ts): adsb.fi open data `/api/v2/mil` (relay `/px/afi`; ~440 aircraft with `desc` type names) then adsb.lol `/v2/mil` as fallback (~390; only those
   broadcasting ADS-B, so mostly transports, tankers, patrol, trainers and helicopters; no CORS). Map button "Military".
 - Live flights: `.github/workflows/flights.yml` runs `scripts/flights.ts` ~5.5 h at a time (scheduled every 2 h, one at a time):
   military every 90 s, cargo every 4 min, force-pushed as one data-only commit to the `flights` branch. The site reads

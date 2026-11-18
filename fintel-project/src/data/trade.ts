@@ -140,7 +140,7 @@ export const CARGO: SourceDef<CargoData> = {
 /** Only aircraft that broadcast ADS-B show up: transports, tankers, trainers, patrol and helicopters mostly; fighters and
  *  combat missions usually fly with it off. Coverage follows the volunteer receivers (dense over the US and Europe). */
 export interface MilPlane { hex: string; cs: string; type: string; desc: string; reg: string; lat: number; lng: number; alt: number | null; ground: boolean; track: number | null; gs: number | null }
-export interface MilData { at: number; planes: MilPlane[] }
+export interface MilData { at: number; planes: MilPlane[]; src?: 'adsb.fi' | 'adsb.lol' }
 interface AdsbMil extends AdsbAc { desc?: string; r?: string; gs?: number }
 export function milFrom(ac: AdsbMil[]): MilPlane[] {
   const out: MilPlane[] = [], seen = new Set<string>();
@@ -152,14 +152,19 @@ export function milFrom(ac: AdsbMil[]): MilPlane[] {
   }
   return out;
 }
+/** adsb.fi's open data feed first (more aircraft, with type names), adsb.lol as the fallback; neither allows browsers (CORS). */
 export async function fetchMil(): Promise<MilData> {
-  const j = await getJSON<{ ac?: AdsbMil[] }>(`${HOST.adsb}/v2/mil`, { timeout: 20000 });
-  const planes = milFrom(j.ac ?? []);
-  if (!planes.length) throw new Error('adsb.lol returned no military aircraft');
-  return { at: Date.now(), planes };
+  for (const [src, url] of [['adsb.fi', `${HOST.afi}/v2/mil`], ['adsb.lol', `${HOST.adsb}/v2/mil`]] as const) {
+    try {
+      const j = await getJSON<{ ac?: AdsbMil[] }>(url, { timeout: 20000 });
+      const planes = milFrom(j.ac ?? []);
+      if (planes.length) return { at: Date.now(), planes, src };
+    } catch { /* try the next feed */ }
+  }
+  throw new Error('no military aircraft from adsb.fi or adsb.lol');
 }
 export const MIL: SourceDef<MilData> = {
-  id: 'adsb:mil', label: 'Military aircraft', provider: 'adsb.lol (ADS-B Exchange community feed)', every: 2 * 60_000,
+  id: 'adsb:mil', label: 'Military aircraft', provider: 'adsb.fi / adsb.lol (community ADS-B feeds)', every: 2 * 60_000,
   asOf: STATIC ? snapTime('mil.json') : undefined,
   fetch: () => (STATIC ? liveSnap<MilData>('mil.json') : fetchMil()),
 };

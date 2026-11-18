@@ -41,6 +41,7 @@ export default defineConfig(({ mode }) => {
     '/px/nasdaq': relay('https://api.nasdaq.com', '/px/nasdaq', { 'User-Agent': BROWSER_UA, Accept: 'application/json, text/plain, */*' }),
     '/px/finra': relay('https://api.finra.org', '/px/finra', { 'User-Agent': BROWSER_UA, Accept: 'application/json' }),
     '/px/adsb': relay('https://api.adsb.lol', '/px/adsb', { 'User-Agent': BROWSER_UA, Accept: 'application/json' }),
+    '/px/afi': relay('https://opendata.adsb.fi/api', '/px/afi', { 'User-Agent': BROWSER_UA, Accept: 'application/json' }),
   };
   // build id (the commit on GitHub) baked into the app and written to version.json, so open tabs can tell
   // a newer site is live and offer to reload
