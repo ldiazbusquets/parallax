@@ -7,7 +7,7 @@ import path from 'node:path';
 import { chartQuotes, chartLive, ohlcSnapName, sparkLive, SNAP_FILES } from '../src/data/yahoo';
 import { ecoCalendar, govYields } from '../src/data/global';
 import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreenerFresh, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
-import { fetchCargo, fetchPorts } from '../src/data/trade';
+import { fetchCargo, fetchMil, fetchPorts } from '../src/data/trade';
 import { figiTickers, FUNDS, FUNDS_V, tickerByName, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
 import { unzipSync, strFromU8 } from 'fflate';
 import { parseGdeltExport, summariseWindow, type Ev } from '../src/data/events';
@@ -270,6 +270,15 @@ async function main() {
       const busiest = Object.entries(c.hubs).sort((a, b) => (b[1].air + b[1].ground) - (a[1].air + a[1].ground))[0];
       return `${c.planes.length} cargo aircraft (${c.planes.filter((p) => p.hub).length} near ${Object.values(c.hubs).filter((h) => h.ok).length}/${Object.keys(c.hubs).length} hubs) · busiest ${busiest?.[0]} (${busiest ? busiest[1].air + busiest[1].ground : 0})`;
     }, 3 * 60_000);
+  }
+
+  if (want('mil')) {
+    await step('mil', async () => {
+      const m = await fetchMil();
+      await save('mil.json', m, m.at);
+      const types: Record<string, number> = {}; for (const p of m.planes) types[p.type || '?'] = (types[p.type || '?'] ?? 0) + 1;
+      return `${m.planes.length} military aircraft · most common ${Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v}`).join(', ')}`;
+    }, 60_000);
   }
 
   if (want('ports')) {

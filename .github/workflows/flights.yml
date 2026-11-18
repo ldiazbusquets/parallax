@@ -1,0 +1,41 @@
+name: Live flights
+# Keeps the map's cargo and military aircraft close to live: one job stays up ~5.5 h, refreshing military aircraft every
+# 90 s and cargo every 4 min from adsb.lol, and force-pushes them to the `flights` branch (a single data-only commit).
+# The website reads that branch through raw.githubusercontent.com and falls back to its own 15-minute snapshot.
+# Pushes made with GITHUB_TOKEN don't start other workflows. If this ever misbehaves, disable it; nothing else needs it.
+on:
+  schedule:
+    - cron: '17 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flights
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    defaults:
+      run:
+        working-directory: fintel-project
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: fintel-project/package-lock.json }
+      - run: npm ci
+      - name: Prepare the flights branch checkout
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p flights-out && cd flights-out && git init -q && git checkout -q --orphan flights
+          git config user.name "github-actions[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+      - name: Refresh flights until the job's time is up
+        env:
+          FLIGHTS_OUT: flights-out
+          FLIGHTS_MINUTES: '330'
+        run: npx vite-node scripts/flights.ts

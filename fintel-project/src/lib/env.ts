@@ -33,3 +33,17 @@ export function snap<T>(name: string): Promise<T> {
   return p;
 }
 export const snapTime = (name: string) => () => generated.get(name);
+
+/** Flight data (cargo and military aircraft) is refreshed every couple of minutes by the "Live flights" job, which force-pushes
+ *  the files to the repo's `flights` branch; raw.githubusercontent.com serves them with CORS (and a short cache, busted per
+ *  minute here). The site's own snapshot is the fallback, and whichever copy is newer wins. */
+export const LIVE_BASE = 'https://raw.githubusercontent.com/ldiazbusquets/parallax/flights/';
+export async function liveSnap<T>(name: string): Promise<T> {
+  const live = getText(`${LIVE_BASE}${name}?t=${Math.floor(Date.now() / 60_000)}`, { timeout: 12000 }).then((t) => JSON.parse(t) as Snap<T>).catch(() => undefined);
+  const site = snap<T>(name).then((data) => ({ generated: generated.get(name) ?? 0, data })).catch(() => undefined);
+  const [l, s] = await Promise.all([live, site]);
+  const best = l && (!s || l.generated >= s.generated) ? l : s;
+  if (!best) throw new Error('flight data unavailable');
+  generated.set(name, best.generated);
+  return best.data;
+}

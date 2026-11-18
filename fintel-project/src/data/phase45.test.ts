@@ -156,3 +156,18 @@ describe('IMF WEO from api.imf.org', () => {
     expect(d.edition).toBe('World Economic Outlook (IMF data portal, v9.0.0)');
   });
 });
+
+describe('military aircraft', () => {
+  it('keeps positioned aircraft once, with altitude, ground and speed', async () => {
+    const { milFrom } = await import('./trade');
+    const p = milFrom([
+      { hex: 'ae1234', flight: 'RCH123  ', t: 'C17', desc: 'Boeing C-17A Globemaster III', r: '05-5140', lat: 38.1, lon: -75.4, alt_baro: 31000, track: 90, gs: 450 },
+      { hex: 'ae1234', flight: 'RCH123', lat: 38.2, lon: -75.3 },
+      { hex: 'ae9999', flight: 'NOPOS' },
+      { hex: '43c001', t: 'H60', lat: 51, lon: -1, alt_baro: 'ground' },
+    ]);
+    expect(p).toHaveLength(2);
+    expect(p[0]).toMatchObject({ cs: 'RCH123', type: 'C17', reg: '05-5140', alt: 31000, ground: false, gs: 450 });
+    expect(p[1]).toMatchObject({ hex: '43c001', cs: '', ground: true, alt: null, gs: null });
+  });
+});

@@ -128,6 +128,12 @@ The app lives in `fintel-project/`. See its README for running it and the source
   re-api `?all` needs a key. Also available: `/v2/mil` (military aircraft that broadcast ADS-B). (no CORS: relay `/px/adsb`, snapshot `cargo.json`). It returns
   429 after ~10 quick calls: 3 s apart in the job. airplanes.live refuses without contact; OpenSky's CORS is its own origin.
   Only all-cargo airline designators (`CARGO_AIRLINES`) are counted. Coverage over mainland China is ~nil.
+- Military aircraft (`MIL`, `milFrom` in trade.ts): adsb.lol `/v2/mil` (~400 aircraft its database flags military; only those
+  broadcasting ADS-B, so mostly transports, tankers, patrol, trainers and helicopters; no CORS). Map button "Military".
+- Live flights: `.github/workflows/flights.yml` runs `scripts/flights.ts` ~5.5 h at a time (scheduled every 2 h, one at a time):
+  military every 90 s, cargo every 4 min, force-pushed as one data-only commit to the `flights` branch. The site reads
+  `raw.githubusercontent.com/ldiazbusquets/parallax/flights/<file>` (CORS *, max-age 300, busted per minute) via `liveSnap`
+  (env.ts) and falls back to `snap/` if that copy is newer or the branch is missing. ci.yml ignores pushes to `flights`.
 - Chokepoint risk (`chokeRisk`): violent GDELT week points (CAMEO 18–20, not country centroids) within 250 km, flagged at 3+, plus orange/red hazards.
 - Freshness: GitHub fires the deploy's */15 cron only every few hours here, so `.github/workflows/keeper.yml` runs ~5.7 h
   at a time and dispatches "Deploy site" every 15 min with GITHUB_TOKEN (allowed for workflow_dispatch), skipping while

@@ -1,6 +1,6 @@
 import { getJSON } from '@/lib/http';
 import { isoDaysAgo } from '@/lib/format';
-import { HOST, snap, snapTime, STATIC } from '@/lib/env';
+import { HOST, liveSnap, snap, snapTime, STATIC } from '@/lib/env';
 import type { SourceDef } from './store';
 import type { EventPoint } from './events';
 import type { Hazard } from './hazards';
@@ -131,9 +131,37 @@ export async function fetchCargo(gapMs = 3000): Promise<CargoData> {
   return { at: Date.now(), planes, hubs: hubCounts(planes, answered), worldwide: typesOk > 0 };
 }
 export const CARGO: SourceDef<CargoData> = {
-  id: 'adsb:cargo', label: 'Cargo flights', provider: 'adsb.lol (ADS-B Exchange community feed)', every: 15 * 60_000,
+  id: 'adsb:cargo', label: 'Cargo flights', provider: 'adsb.lol (ADS-B Exchange community feed)', every: 2 * 60_000,
   asOf: STATIC ? snapTime('cargo.json') : undefined,
-  fetch: () => (STATIC ? snap<CargoData>('cargo.json') : fetchCargo(1500)),
+  fetch: () => (STATIC ? liveSnap<CargoData>('cargo.json') : fetchCargo(1500)),
+};
+
+// ============================ Military aircraft (adsb.lol /v2/mil: aircraft its database flags as military)
+/** Only aircraft that broadcast ADS-B show up: transports, tankers, trainers, patrol and helicopters mostly; fighters and
+ *  combat missions usually fly with it off. Coverage follows the volunteer receivers (dense over the US and Europe). */
+export interface MilPlane { hex: string; cs: string; type: string; desc: string; reg: string; lat: number; lng: number; alt: number | null; ground: boolean; track: number | null; gs: number | null }
+export interface MilData { at: number; planes: MilPlane[] }
+interface AdsbMil extends AdsbAc { desc?: string; r?: string; gs?: number }
+export function milFrom(ac: AdsbMil[]): MilPlane[] {
+  const out: MilPlane[] = [], seen = new Set<string>();
+  for (const a of ac) {
+    if (!Number.isFinite(a.lat) || !Number.isFinite(a.lon) || seen.has(a.hex)) continue;
+    seen.add(a.hex);
+    out.push({ hex: a.hex, cs: (a.flight ?? '').trim(), type: a.t ?? '', desc: a.desc ?? '', reg: a.r ?? '', lat: a.lat!, lng: a.lon!,
+      alt: typeof a.alt_baro === 'number' ? a.alt_baro : null, ground: a.alt_baro === 'ground', track: a.track ?? null, gs: Number.isFinite(a.gs) ? a.gs! : null });
+  }
+  return out;
+}
+export async function fetchMil(): Promise<MilData> {
+  const j = await getJSON<{ ac?: AdsbMil[] }>(`${HOST.adsb}/v2/mil`, { timeout: 20000 });
+  const planes = milFrom(j.ac ?? []);
+  if (!planes.length) throw new Error('adsb.lol returned no military aircraft');
+  return { at: Date.now(), planes };
+}
+export const MIL: SourceDef<MilData> = {
+  id: 'adsb:mil', label: 'Military aircraft', provider: 'adsb.lol (ADS-B Exchange community feed)', every: 2 * 60_000,
+  asOf: STATIC ? snapTime('mil.json') : undefined,
+  fetch: () => (STATIC ? liveSnap<MilData>('mil.json') : fetchMil()),
 };
 
 // ============================ Risk near chokepoints
