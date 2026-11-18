@@ -1,11 +1,19 @@
-const CARGO = /^(FDX|UPS|GTI|CLX|CKS|ABX|ATN|BCS|DHK|DHX|AHK|BOX|GEC|CAO|CKK|CSS|YZR|NCA|MPH|SQC|PAC|NCR|WGN|TAY|SWN|ICL|MSX|CJT|SCX|KYE|AJT|ABD)\d/;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let all = new Map();
-for (const t of ['MD11', 'A306', 'B763', 'B77L', 'B748', 'B744', 'B752', 'B762', 'A332', 'B738', 'B734', 'A321', 'B77W', 'DC10', 'B74F', 'ATP', 'AT76', 'C208']) {
-  try { const r = await fetch('https://api.adsb.lol/v2/type/' + t); const j = await r.json(); const ac = j.ac || []; const c = ac.filter((a) => CARGO.test((a.flight || '').trim()));
-    c.forEach((a) => all.set(a.hex, a)); console.log(t, r.status, 'all', ac.length, 'cargo', c.length, [...new Set(c.map((a) => a.flight.trim().slice(0, 3)))].join(' '));
-  } catch (e) { console.log(t, 'ERR', String(e)); }
-  await sleep(3000);
+const H = { Origin: 'https://ldiazbusquets.github.io' };
+for (const u of ['https://api.adsb.lol/v2/mil', 'https://api.adsb.lol/v2/type/B763', 'https://opendata.adsb.fi/api/v2/mil', 'https://api.airplanes.live/v2/mil', 'https://api.adsb.one/v2/mil']) {
+  try {
+    const r = await fetch(u, { headers: H }); const t = await r.text();
+    const acao = r.headers.get('access-control-allow-origin');
+    let n = '', sample = '';
+    try { const j = JSON.parse(t); const ac = j.ac || j.aircraft || []; n = ac.length;
+      sample = JSON.stringify(ac.slice(0, 2).map((a) => ({ hex: a.hex, flight: a.flight, t: a.t, desc: a.desc, r: a.r, ownOp: a.ownOp, dbFlags: a.dbFlags, lat: a.lat, lon: a.lon, alt: a.alt_baro, gs: a.gs, seen: a.seen })));
+      const types = {}; ac.forEach((a) => { types[a.t] = (types[a.t] || 0) + 1; }); console.log('TOP TYPES', Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 15).map((x) => x.join(':')).join(' '));
+      console.log('withpos', ac.filter((a) => a.lat != null).length, 'airborne', ac.filter((a) => a.alt_baro !== 'ground').length);
+    } catch {}
+    console.log(u, r.status, 'ACAO=', acao, 'n=', n, t.length); console.log(sample);
+    // preflight check
+    const o = await fetch(u, { method: 'OPTIONS', headers: { ...H, 'Access-Control-Request-Method': 'GET' } }).catch((e) => ({ status: String(e), headers: new Headers() }));
+    console.log('  OPTIONS', o.status, o.headers.get('access-control-allow-origin'), o.headers.get('access-control-allow-methods'));
+  } catch (e) { console.log(u, 'ERR', String(e)); }
+  await sleep(2500);
 }
-console.log('unique cargo aircraft worldwide', all.size, 'airborne', [...all.values()].filter((a) => a.alt_baro !== 'ground').length);
-for (const u of ['https://re-api.adsb.lol/?all', 'https://api.adsb.lol/v2/all', 'https://opendata.adsb.fi/api/v2/all']) { try { const r = await fetch(u); const t = await r.text(); console.log(u, r.status, t.length, t.slice(0, 120)); } catch (e) { console.log(u, 'ERR', String(e)); } await sleep(2000); }
