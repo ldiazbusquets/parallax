@@ -1,0 +1,7 @@
+["Shipping","Cargo","Military","Events"]
+["Shipping","Cargo","Military · 352","Events"]
+200 https://ldiazbusquets.github.io/parallax/snap/cargo.json
+200 https://ldiazbusquets.github.io/parallax/snap/mil.json
+200 https://raw.githubusercontent.com/ldiazbusquets/parallax/flights/mil.json
+200 https://raw.githubusercontent.com/ldiazbusquets/parallax/flights/cargo.json
+ERR 
