@@ -1,20 +1,6 @@
-const { chromium } = require('playwright');
-const fs = require('fs');
-(async () => {
-  fs.mkdirSync('shots', { recursive: true });
-  const b = await chromium.launch();
-  const p = await b.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
-  const logs = []; p.on('console', (m) => { if (m.type() === 'error') logs.push(m.text()); });
-  await p.goto('https://ldiazbusquets.github.io/parallax/?v=' + Date.now() + '#/w/commodities', { waitUntil: 'networkidle', timeout: 90000 });
-  await p.waitForTimeout(12000);
-  await p.screenshot({ path: 'shots/cmdty.png', fullPage: true });
-  await p.setViewportSize({ width: 390, height: 844 });
-  await p.waitForTimeout(3000);
-  await p.screenshot({ path: 'shots/cmdty-phone.png', fullPage: true });
-  await p.goto('https://ldiazbusquets.github.io/parallax/?v=' + Date.now() + '#/w/overview', { waitUntil: 'networkidle', timeout: 90000 });
-  await p.setViewportSize({ width: 1440, height: 900 });
-  await p.waitForTimeout(8000);
-  await p.screenshot({ path: 'shots/overview.png', fullPage: false, clip: { x: 0, y: 0, width: 1440, height: 1700 } }).catch(() => p.screenshot({ path: 'shots/overview.png' }));
-  fs.writeFileSync('shots/log.txt', logs.join('\n'));
-  await b.close();
-})();
+const { chromium } = require('playwright'); const fs = require('fs');
+(async () => { fs.mkdirSync('shots', { recursive: true }); const b = await chromium.launch();
+  for (const [n, w, h] of [['status', 1280, 900], ['status-phone', 390, 844]]) { const p = await b.newPage({ viewport: { width: w, height: h } });
+    await p.goto('https://ldiazbusquets.github.io/status/?v=' + Date.now(), { waitUntil: 'networkidle', timeout: 60000 }); await p.waitForTimeout(5000);
+    await p.screenshot({ path: `shots/${n}.png`, fullPage: true }); }
+  await b.close(); })();
