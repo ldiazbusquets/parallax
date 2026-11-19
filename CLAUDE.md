@@ -106,7 +106,7 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Heatmap: squarified treemap (`src/ui/treemap.ts`, tested) of the largest US listings from the screener snapshot, sized by
   market value, one box per company, grouped by Nasdaq sector; Top 100/200/500.
 - Layout (`src/ui/layout.tsx`): panel registry lives in App.tsx (`PANELS`); `WORKSPACES` (tabs: Overview, Markets,
-  Macro & Rates, Geo, Companies) each have a default layout, rows summing to 12; edits are saved per tab (`#/w/<id>`).
+  Macro & Rates, Geo, Commodities, Companies) each have a default layout, rows summing to 12; edits are saved per tab (`#/w/<id>`).
 
 - Top 500 (Phase 4): `topCompanies(screener, WIDE_N)` in equity.ts (share classes merged, preferreds/notes out) picks the
   largest US companies; the job builds their SEC company files weekly (`companies-wide`, a time-boxed slice per run, 8 Form 4s),
@@ -138,6 +138,15 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Freshness: GitHub fires the deploy's */15 cron only every few hours here, so `.github/workflows/keeper.yml` runs ~5.7 h
   at a time and dispatches "Deploy site" every 15 min with GITHUB_TOKEN (allowed for workflow_dispatch), skipping while
   one is running/queued. If it ever misbehaves, disable that workflow; nothing else depends on it.
+- Commodities tab (`src/data/commodities.ts`, `src/panels/commodities.tsx`, unit-tested): futures curves from Yahoo contract months
+  (`CLF27.NYM`, `GCG27.CMX`; energy every month for 18–24 months, metals delivery months only) via spark `range=1mo&interval=1d`.
+  Thin months show a months-old `regularMarketPrice`, so `curveFrom` uses the last trade only if recent, else the latest settlement;
+  week ago = settlement 5 sessions back; contracts that stopped settling are dropped. Snapshot `curves.json` every run.
+  EIA API v2 allows browsers and takes `DEMO_KEY` (optional key `eia` in Settings / `VITE_EIA_KEY`): `petroleum/stoc/wstk`
+  (WCESTUS1, WGTSTUS1, WDISTUS1, W_EPC0_SAX_YCUOK_MBBL, thousand bbl) and `natural-gas/stor/wkly` (NW2_EPG0_SWO_R48_BCF);
+  `fiveYear` builds the same-week band. Gold vs real yields / dollar and metal ratios: Yahoo 10y weekly GC/SI/HG/CL + FRED DFII10,
+  DTWEXBGS, paired by week (`pair`; Yahoo dates weekly bars Mondays), snapshot `cmdty-hist.json` every 12 h. COT rows reuse
+  `Positioning group="Commodities"`. `cstrip` sits on Overview.
 - App icon files are versioned (`icon-512-v2.png` …): Chrome and Windows cache icons by URL, so rename on any logo change.
 
 ## Look (v6, from Luis's Vexto reference)
@@ -151,10 +160,6 @@ The app lives in `fintel-project/`. See its README for running it and the source
   Add map layers once the style has parsed (`styleReady`), not `isStyleLoaded()`, which waits for every tile.
 
 ## Ideas not built yet (roadmap)
-- Commodities tab (Luis: "VERY important"): futures curves for oil, gas and gold from Yahoo contract months (contango /
-  backwardation); EIA weekly crude, gasoline and natural gas inventories vs the 5-year range (free EIA key as a repo secret);
-  gold/silver, copper/gold and gold vs real yields (DFII10) and the dollar; multi-year charts; CFTC positioning beside each
-  price; a commodities strip on Overview. Today: 16 contracts in the Commodities card, WTI/gold on the tape, COT for
-  crude, gas, gold, silver, copper and corn.
 - Shipping, next step: live vessel positions via a free AIS feed (aisstream.io websocket, free key; would need a small relay).
 - Admin/health page across Luis's sites (uptime, deploy status, key expiry such as the Canvas token): pinned for later.
+- Public status page for all the LDB websites (up/down, last deploy, data freshness), open to visitors: pinned for later.

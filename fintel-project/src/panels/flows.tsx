@@ -6,16 +6,16 @@ import { Chg, Panel, Spark, Tabs, useNow, Big } from '@/ui/kit';
 import { T } from '@/ui/theme';
 
 // ---------------------------------------------------------------- CFTC positioning
-export function Positioning() {
+export function Positioning({ group, id = 'p-cot', span = 'c6', title = 'Speculative positioning (COT)' }: { group?: string; id?: string; span?: 'c6' | 'c12'; title?: string } = {}) {
   const c = useSource(COT);
   const groups = useMemo(() => {
     const m = new Map<string, NonNullable<typeof c.data>>();
-    for (const r of c.data ?? []) { if (!m.has(r.market.group)) m.set(r.market.group, []); m.get(r.market.group)!.push(r); }
+    for (const r of c.data ?? []) { if (group && r.market.group !== group) continue; if (!m.has(r.market.group)) m.set(r.market.group, []); m.get(r.market.group)!.push(r); }
     return [...m.entries()];
-  }, [c.data]);
+  }, [c.data, group]);
   const date = c.data?.[0]?.date;
   return (
-    <Panel id="p-cot" title="Speculative positioning (COT)" src={c} span="c6"
+    <Panel id={id} title={title} src={c} span={span}
       note={`CFTC Commitments of Traders, positions as of ${dateLabel(date)} (released the following Friday). Net = leveraged funds for financial futures, managed money for commodities. Percentile = where this week's net sits in the past year.`}>
       <table className="t">
         <thead><tr><th>Market</th><th>Net contracts</th><th className="hs">Weekly chg</th><th className="hs">% of OI</th><th>1Y percentile</th><th>1Y net</th></tr></thead>

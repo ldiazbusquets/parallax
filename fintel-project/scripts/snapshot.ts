@@ -8,6 +8,7 @@ import { chartQuotes, chartLive, ohlcSnapName, sparkLive, SNAP_FILES } from '../
 import { ecoCalendar, govYields } from '../src/data/global';
 import { dashSym, finnhubRecs, finraShortInterest, nasdaqScreenerFresh, topCompanies, TRACKED, WIDE_N, type ScreenRow } from '../src/data/equity';
 import { fetchCargo, fetchMil, fetchPorts } from '../src/data/trade';
+import { curveStats, fetchCurves, fetchHistory } from '../src/data/commodities';
 import { figiTickers, FUNDS, FUNDS_V, tickerByName, latest13F, shapeHoldings, type Fund, type FundsData } from '../src/data/funds';
 import { unzipSync, strFromU8 } from 'fflate';
 import { parseGdeltExport, summariseWindow, type Ev } from '../src/data/events';
@@ -269,6 +270,24 @@ async function main() {
       await save('cargo.json', c, c.at);
       const busiest = Object.entries(c.hubs).sort((a, b) => (b[1].air + b[1].ground) - (a[1].air + a[1].ground))[0];
       return `${c.planes.length} cargo aircraft (${c.planes.filter((p) => p.hub).length} near ${Object.values(c.hubs).filter((h) => h.ok).length}/${Object.keys(c.hubs).length} hubs) · busiest ${busiest?.[0]} (${busiest ? busiest[1].air + busiest[1].ground : 0})`;
+    }, 3 * 60_000);
+  }
+
+  if (want('curves')) {
+    await step('curves', async () => {
+      const c = await fetchCurves(300);
+      await save('curves.json', c, c.at);
+      return c.curves.map((x) => { const st = curveStats(x); return `${x.key} ${x.pts.length} months ${st.shape}`; }).join(' · ');
+    }, 3 * 60_000);
+  }
+
+  if (want('cmdtyhist')) {
+    // weekly history changes slowly: rebuild every 12 h
+    const d = await due([{ key: 'cmdtyhist', file: 'cmdty-hist.json' }], 12 * 60 * 60_000);
+    if (d.todo.length || only.includes("cmdtyhist")) await step('cmdtyhist', async () => {
+      const h = await fetchHistory();
+      await save('cmdty-hist.json', h, h.at);
+      return `gold ${h.px.gold.length} weeks · real yield ${h.real.length} · dollar ${h.usd.length}`;
     }, 3 * 60_000);
   }
 

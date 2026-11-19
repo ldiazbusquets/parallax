@@ -20,6 +20,7 @@ import { useUpdateReady } from '@/ui/update';
 import { useInstall } from '@/ui/install';
 import { Slot, useWorkspaces, WORKSPACES, type Span } from '@/ui/layout';
 import { EarningsSeason, FundHoldings } from './panels/holders';
+import { CommodityStrip, FuturesCurves, GoldRealYields, Inventories, MetalRatios, TermStructure } from '@/panels/commodities';
 
 // Exchange hours (local time) for the clocks. Weekends closed; holidays not modelled.
 // The usual trading-desk set: the three big hubs (New York, London, Tokyo) plus Frankfurt, Hong Kong and
@@ -49,7 +50,7 @@ function Clocks() {
 }
 
 function Settings({ onClose }: { onClose: () => void }) {
-  const [vals, setVals] = useState<Record<KeyName, string>>({ finnhub: getKey('finnhub'), groq: getKey('groq') });
+  const [vals, setVals] = useState<Record<KeyName, string>>({ finnhub: getKey('finnhub'), groq: getKey('groq'), eia: getKey('eia') });
   const all = useAllSources();
   const now = useNow();
   useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [onClose]);
@@ -141,6 +142,13 @@ export default function App() {
     aircargo: { id: 'p-aircargo', label: 'Air cargo', span: 'c4', el: <AirCargo /> },
     funds: { id: 'p-funds', label: 'Fund holdings', span: 'c8', el: <FundHoldings /> },
     season: { id: 'p-season', label: 'Earnings season', span: 'c4', el: <EarningsSeason /> },
+    cstrip: { id: 'p-cstrip', label: 'Commodities strip', span: 'c12', el: <CommodityStrip /> },
+    curves: { id: 'p-curves', label: 'Futures curves', span: 'c8', el: <FuturesCurves /> },
+    term: { id: 'p-term', label: 'Curve shape', span: 'c4', el: <TermStructure /> },
+    inv: { id: 'p-inv', label: 'Energy inventories', span: 'c8', el: <Inventories /> },
+    goldry: { id: 'p-goldry', label: 'Gold vs real yields', span: 'c6', el: <GoldRealYields /> },
+    ratios: { id: 'p-ratios', label: 'Metal ratios', span: 'c6', el: <MetalRatios /> },
+    ccot: { id: 'p-ccot', label: 'Commodity positioning', span: 'c12', el: <Positioning group="Commodities" id="p-ccot" span="c12" title="Commodity positioning (COT)" /> },
   };
   const L = useWorkspaces(Object.keys(PANELS));
   const hidden = Object.keys(PANELS).filter((k) => !L.items.some((i) => i.key === k));
