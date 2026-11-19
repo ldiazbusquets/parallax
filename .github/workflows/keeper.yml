@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
-      - name: Start a site update every 15 minutes
+      - name: Start a site update every 15 minutes (and restart live flights if it stopped)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -32,6 +32,10 @@ jobs:
               gh api -X POST "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/dispatches" -f ref=main && echo "$(date -u +%H:%M) started a site update"
             else
               echo "$(date -u +%H:%M) an update is already running or queued"
+            fi
+            fl=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/flights.yml/runs?per_page=5" --jq '[.workflow_runs[] | select(.status != "completed")] | length' || echo 1)
+            if [ "$fl" = "0" ]; then
+              gh api -X POST "repos/$GITHUB_REPOSITORY/actions/workflows/flights.yml/dispatches" -f ref=main && echo "$(date -u +%H:%M) restarted live flights"
             fi
             sleep 900
           done

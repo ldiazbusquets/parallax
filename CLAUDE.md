@@ -131,7 +131,7 @@ The app lives in `fintel-project/`. See its README for running it and the source
 - Military aircraft (`MIL`, `milFrom` in trade.ts): adsb.fi open data `/api/v2/mil` (relay `/px/afi`; ~440 aircraft with `desc` type names) then adsb.lol `/v2/mil` as fallback (~390; only those
   broadcasting ADS-B, so mostly transports, tankers, patrol, trainers and helicopters; no CORS). Map button "Military".
 - Live flights: `.github/workflows/flights.yml` runs `scripts/flights.ts` ~5.5 h at a time (scheduled every 2 h, one at a time):
-  military every 90 s, cargo every 4 min, force-pushed as one data-only commit to the `flights` branch. The site reads
+  military every 90 s, cargo every 4 min, force-pushed as one data-only commit to the `flights` branch. GitHub delays its cron by hours here, so keeper.yml also re-dispatches it whenever no run is active. The site reads
   `raw.githubusercontent.com/ldiazbusquets/parallax/flights/<file>` (CORS *, max-age 300, busted per minute) via `liveSnap`
   (env.ts) and falls back to `snap/` if that copy is newer or the branch is missing. ci.yml ignores pushes to `flights`.
 - Chokepoint risk (`chokeRisk`): violent GDELT week points (CAMEO 18–20, not country centroids) within 250 km, flagged at 3+, plus orange/red hazards.
