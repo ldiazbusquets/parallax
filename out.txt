@@ -1,29 +1,83 @@
+-rw-r--r-- 1 runner runner 8910483 Nov 19 15:39 /tmp/a.csv.gz
 
-## https://api.adsb.lol/v2/type/B77L 200 101 keys: hex,type,flight,r,t,alt_baro,alt_geom,gs,track,baro_rate,squawk,emergency,category,nav_qnh,nav_altitude_mcp,nav_heading,lat,lon,nic,rc,seen_pos,version,nic_baro,nac_p,nac_v,sil,sil_type,gva,sda,alert,spi,mlat,tisb,messages,seen,rssi
-FDX:19 BOX:10 QTR:8 UAE:8 (none):7 EVA:6 KAL:5 CKK:4 DHK:4 GEC:4 GTI:3 THY:3 CSG:2 PAC:2 CAO:2 CKS:2 SIA:2 CAL:2 CSN:1 SRR:1 ETD:1 HLF:1 AZG:1 ACA:1 TUA:1 ANA:1
-{"f":"KAL231  ","r":"HL8285","t":"B77L"}
-{"f":"CKK224  ","r":"B-221W","t":"B77L"}
-{"f":"EVA646  ","r":"B-16787","t":"B77L"}
-{"f":"CSG2521 ","r":"B-226C","t":"B77L"}
-https://opendata.adsb.fi/api/v2/type/B77L SyntaxError: Unexpected end of JSON input
+$ zcat /tmp/a.csv.gz | head -3
+000001;;;10;;;Miscode - VARIOUS;
+000011;;;10;;;Miscode - VARIOUS;
+000012;;;10;;;Miscode - VARIOUS;
 
-## https://api.adsb.lol/v2/type/MD11 200 9 keys: hex,type,flight,r,t,alt_baro,alt_geom,gs,track,baro_rate,squawk,emergency,category,nav_qnh,nav_altitude_mcp,nav_heading,lat,lon,nic,rc,seen_pos,version,nic_baro,nac_p,nac_v,sil,sil_type,gva,sda,alert,spi,mlat,tisb,messages,seen,rssi
-FDX:9
-{"f":"FDX109  ","r":"N574FE","t":"MD11"}
-{"f":"FDX1423 ","r":"N605FE","t":"MD11"}
-{"f":"FDX428  ","r":"N610FE","t":"MD11"}
-{"f":"FDX876  ","r":"N624FE","t":"MD11"}
 
-## https://api.adsb.lol/v2/type/B748 200 32 keys: hex,type,flight,r,t,alt_baro,gs,true_heading,squawk,emergency,category,lat,lon,nic,rc,seen_pos,version,nac_p,nac_v,sil,sil_type,sda,mlat,tisb,messages,seen,rssi
-UPS:9 KAL:5 CLX:5 CPA:4 GTI:2 AZG:2 NCA:2 ICV:1 DLH:1 TRK:1
-{"f":"UPS62   ","r":"N631UP","t":"B748"}
-{"f":"UPS64   ","r":"N615UP","t":"B748"}
-{"f":"UPS108  ","r":"N607UP","t":"B748"}
-{"f":"UPS96   ","r":"N618UP","t":"B748"}
+$ zcat /tmp/a.csv.gz | wc -l
+647571
 
-## https://api.adsb.lol/v2/type/B744 200 48 keys: hex,type,flight,r,t,dbFlags,alt_baro,alt_geom,gs,track,baro_rate,squawk,emergency,category,nav_qnh,nav_altitude_mcp,nav_heading,lat,lon,nic,rc,seen_pos,version,nic_baro,nac_p,nac_v,sil,sil_type,gva,sda,alert,spi,mlat,tisb,messages,seen,rssi
-GTI:9 CKS:6 UPS:4 CAL:4 DLH:3 CLX:3 TAY:3 KYE:2 ABD:2 QFA:1 SIA:1 YZR:1 ADZ:1 AAE:1 CMB:1 RCR:1 KAL:1 AIH:1 ICV:1 (none):1 WGN:1
-{"f":"KYE9719 ","r":"N903AR","t":"B744","dbFlags":8}
-{"f":"GTI856  ","r":"N496MC","t":"B744"}
-{"f":"QFA7521 ","r":"N418MC","t":"B744"}
-{"f":"CKS996  ","r":"N745CK","t":"B744"}
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B77L"{print $5}' | sort | uniq -c | sort -rn | head -25
+    402 BOEING 777-200LR
+     19 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B748"{print $5}' | sort | uniq -c | sort -rn | head -25
+    161 BOEING 747-8
+      6 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B744"{print $5}' | sort | uniq -c | sort -rn | head -25
+    394 BOEING 747-400
+     55 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B763"{print $5}' | sort | uniq -c | sort -rn | head -25
+    854 BOEING 767-300
+    100 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="A332"{print $5}' | sort | uniq -c | sort -rn | head -25
+    722 AIRBUS A-330-200
+     76 
+      7 Airbus Voyager KC3 (A330-243MRTT)
+      5 Airbus KC-30A (A330-200MRTT)
+      5 Airbus A330-243MRTT
+      3 Airbus Voyager KC2 (A330-243MRTT)
+      2 Airbus KC-30A (A330-203MRTT)
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B738"{print $5}' | sort | uniq -c | sort -rn | head -25
+   5453 BOEING 737-800
+    299 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B752"{print $5}' | sort | uniq -c | sort -rn | head -25
+    734 BOEING 757-200
+     81 
+      8 Boeing C-32A
+      3 Boeing C-32B
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="MD11"{print $5}' | sort | uniq -c | sort -rn | head -25
+    132 MCDONNELL-DOUGLAS MD-11
+     18 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="A306"{print $5}' | sort | uniq -c | sort -rn | head -25
+    175 AIRBUS A-300-600
+      5 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B77W"{print $5}' | sort | uniq -c | sort -rn | head -25
+    861 BOEING 777-300ER
+     16 
+
+
+$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B762"{print $5}' | sort | uniq -c | sort -rn | head -25
+    160 BOEING 767-200
+     70 Boeing KC-46A Pegasus
+     33 
+      4 Boeing KC-767A
+
+
+$ zcat /tmp/a.csv.gz | grep -E ';(HL8285|B-16787|A6-EFD|A7-BFA|N418MC|B-LJA);'
+06A07F;A7-BFA;B77L;00;BOEING 777-200LR;;;
+71C285;HL8285;B77L;00;BOEING 777-200LR;;;
+780231;B-LJA;B748;00;BOEING 747-8;;;
+89912D;B-16787;B77L;00;BOEING 777-200LR;;;
+A4F2EE;N418MC;B744;00;BOEING 747-400;2002;ATLAS AIR INC;
+
