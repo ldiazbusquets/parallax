@@ -1,13 +1,8 @@
-pet 200 1436 [["2026-11-13","WDISTUS1","104901","MBBL","U.S. Ending Stocks of Distillate Fuel Oil (Thousand Barrels)"],["2026-11-13","W_EPC0_SAX_YCUOK_MBBL","26147","MBBL","Cushing, OK Ending Stocks excluding SPR of Crude Oil (Thousand Barrels)"],["2026-11-13","WCESTUS1","417797","MBBL","U.S. Ending Stocks excluding SPR of Crude Oil (Thousand Barrels)"],["2026-11-13","WGTSTUS1","215949","MBBL","U.S. Ending Stocks of Total Gasoline (Thousand Barrels)"]]
-{
-  WDISTUS1: 359,
-  W_EPC0_SAX_YCUOK_MBBL: 359,
-  WCESTUS1: 359,
-  WGTSTUS1: 359
-}
-ng 200 358 [["2026-11-06","NW2_EPG0_SWO_R48_BCF","3862","BCF","Weekly Lower 48 States Natural Gas Working Underground Storage (Billion Cubic Feet)"],["2026-10-30","NW2_EPG0_SWO_R48_BCF","3801","BCF","Weekly Lower 48 States Natural Gas Working Underground Storage (Billion Cubic Feet)"],["2026-10-23","NW2_EPG0_SWO_R48_BCF","3724","BCF","Weekly Lower 48 States Natural Gas Working Underground Storage (Billion Cubic Feet)"]] 
-ng facets 200 [{"id":"NW2_EPG0_SWO_R48_BCF","name":"Weekly Lower 48 States Natural Gas Working Underground Storage (Billion Cubic Feet)"}]
-SIX27.CMX 72.105 2026-08-25T06:24:21.000Z 2026-11-16,2026-11-17,2026-11-18,2026-11-19 [49.133,49.651,47.231,null]
-CLZ26.NYM 84.62 2026-11-19T15:08:29.000Z 2026-11-16,2026-11-17,2026-11-18,2026-11-19 [85.72,86.01,83.26,84.62]
-GCX27.CMX 4099 2026-10-30T14:44:17.000Z 2026-11-16,2026-11-17,2026-11-18,2026-11-19 [4039.1,4049.7,3920.2,null]
-CLF27.NYM 83.67 2026-11-19T15:08:58.000Z 2026-11-16,2026-11-17,2026-11-18,2026-11-19 [84.47,84.65,82.31,83.67]
+CLZ27.NYM 72.47 2026-11-19T15:16:13.000Z 24 [ 72.32, 71.48, 72.47 ]
+CLF27.NYM 83.62 2026-11-19T15:16:32.000Z 24 [ 84.65, 82.31, 83.62 ]
+CLZ26.NYM 84.59 2026-11-19T15:16:32.000Z 24 [ 86.01, 83.26, 84.59 ]
+GCZ26.CMX 3701.9 2026-11-19T15:16:31.000Z 24 [ 3864.2, 3741.9, 3701.9 ]
+GCG27.CMX 3731.8 2026-11-19T15:16:31.000Z 24 [ 3896, 3772, 3731.8 ]
+NGF27.NYM 3.738 2026-11-19T15:16:33.000Z 24 [ 3.604, 3.765, 3.738 ]
+petroleum/stoc/wstk 200 * 359 {"period":"2026-11-13","duoarea":"NUS","area-name":"U.S.","product":"EPC0","product-name":"Crude Oil","process":"SAX","process-name":"Ending Stocks Excluding SPR","series":"WCESTUS1","series-description":"U.S. Ending Stocks excluding SPR of Crude Oil (Thousand Barrels)","value":"417797","units":"MBBL"} 
+natural-gas/stor/wkly 200 * 358 {"period":"2026-11-06","duoarea":"R48","area-name":"NA","product":"EPG0","product-name":"Natural Gas","process":"SWO","process-name":"Underground Storage - Working Gas","series":"NW2_EPG0_SWO_R48_BCF","series-description":"Weekly Lower 48 States Natural Gas Working Underground Storage (Billion Cubic Feet)","value":"3862","units":"BCF"} 
