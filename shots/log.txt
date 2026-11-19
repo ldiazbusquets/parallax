@@ -1,0 +1,2 @@
+Access to fetch at 'https://api.worldbank.org/v2/country/all/indicator/BN.CAB.XOKA.GD.ZS?format=json&mrnev=1&per_page=400' from origin 'https://ldiazbusquets.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+Failed to load resource: net::ERR_FAILED
