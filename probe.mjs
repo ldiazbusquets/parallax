@@ -1,7 +1,5 @@
-import { execSync } from 'node:child_process';
-execSync('curl -sSL -o /tmp/a.csv.gz https://github.com/wiedehopf/tar1090-db/raw/csv/aircraft.csv.gz && ls -la /tmp/a.csv.gz', { stdio: 'inherit' });
-const sh = (c) => console.log('\n$ ' + c + '\n' + execSync(c, { shell: '/bin/bash', maxBuffer: 1e8 }).toString());
-sh('zcat /tmp/a.csv.gz | head -3');
-sh('zcat /tmp/a.csv.gz | wc -l');
-for (const t of ['B77L', 'B748', 'B744', 'B763', 'A332', 'B738', 'B752', 'MD11', 'A306', 'B77W', 'B762']) sh(`zcat /tmp/a.csv.gz | awk -F';' '$3=="${t}"{print $5}' | sort | uniq -c | sort -rn | head -25`);
-sh(`zcat /tmp/a.csv.gz | grep -E ';(HL8285|B-16787|A6-EFD|A7-BFA|N418MC|B-LJA);'`);
+for (const p of ['', 'finance/', 'lab/', 'health/', 'parallax/', 'terminal/', 'linux/', 'os/', 'archway-macro/', 'bankscope-ai/', 'retirement-sim/', 'ai/', 'remote/', 'admin/', 'budget/', 'dashboard/', 'status/']) {
+  const u = 'https://ldiazbusquets.github.io/' + p, t = Date.now();
+  try { const r = await fetch(u, { headers: { Origin: 'https://example.com' } }); const s = await r.text(); console.log(r.status, Date.now() - t + 'ms', u, 'acao=' + r.headers.get('access-control-allow-origin'), 'lm=' + r.headers.get('last-modified'), (s.match(/<title>([^<]*)/) || [])[1]); } catch (e) { console.log('ERR', u, String(e)); }
+}
+for (const r of ['parallax', 'finance', 'lab']) { const x = await fetch(`https://api.github.com/repos/ldiazbusquets/${r}/actions/runs?per_page=1`); const j = await x.json(); console.log(r, x.status, x.headers.get('access-control-allow-origin'), j.workflow_runs?.[0]?.name, j.workflow_runs?.[0]?.updated_at); }
