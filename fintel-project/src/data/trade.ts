@@ -69,13 +69,14 @@ export const PORTS: SourceDef<PortsData> = {
 };
 
 // ============================ Cargo flights (adsb.lol; aircraft within ~150 nm of each hub, cargo airlines only)
-/** ICAO airline designators of all-cargo operators (passenger airlines' freighters can't be told apart by callsign). */
+/** ICAO airline designators of all-cargo operators. */
 export const CARGO_AIRLINES: Record<string, string> = {
   FDX: 'FedEx', UPS: 'UPS', GTI: 'Atlas Air', CLX: 'Cargolux', CKS: 'Kalitta', ABX: 'ABX Air (Amazon/DHL)', ATN: 'ATI (Amazon)',
   BCS: 'DHL (EAT Leipzig)', DHK: 'DHL Air UK', DHX: 'DHL International', AHK: 'Air Hong Kong (DHL)', BOX: 'AeroLogic', GEC: 'Lufthansa Cargo',
   CAO: 'Air China Cargo', CKK: 'China Cargo Airlines', CSS: 'SF Airlines', YZR: 'YTO Cargo', NCA: 'Nippon Cargo', MPH: 'Martinair Cargo',
   SQC: 'Singapore Airlines Cargo', PAC: 'Polar Air Cargo', NCR: 'National Airlines', WGN: 'Western Global', TAY: 'ASL Belgium', SWN: 'West Atlantic',
   ICL: 'CAL Cargo', MSX: 'EgyptAir Cargo', CJT: 'Cargojet', SCX: 'Sun Country (Amazon)', KYE: 'Sky Lease Cargo', AJT: 'Amerijet', ABD: 'Air Atlanta Icelandic',
+  AZG: 'Silk Way West', ICV: 'Cargolux Italia', SRR: 'Star Air (Maersk)',
 };
 export const CARGO_HUBS: { code: string; name: string; lat: number; lng: number }[] = [
   { code: 'MEM', name: 'Memphis (FedEx)', lat: 35.04, lng: -89.98 }, { code: 'SDF', name: 'Louisville (UPS)', lat: 38.17, lng: -85.74 },
@@ -91,11 +92,26 @@ export interface Plane { hex: string; cs: string; op: string; type: string; lat:
 /** `hub` is '' for aircraft away from the hubs (en route). `worldwide`: the per-type worldwide queries answered. */
 export interface CargoData { at: number; planes: Plane[]; hubs: Record<string, { air: number; ground: number; ok: boolean }>; worldwide?: boolean }
 interface AdsbAc { hex: string; flight?: string; t?: string; lat?: number; lon?: number; alt_baro?: number | 'ground'; track?: number }
-/** Keep cargo-airline aircraft; the same aircraft near two hubs counts once (at the first hub). */
+/** Passenger airlines whose aircraft of these types are all freighters (the airline flies no passenger version of
+ *  the type), so their cargo flights can be counted even under the passenger callsign. ICAO type codes don't separate
+ *  freighters (B77L covers the 777F and the 777-200LR; B748 the 747-8F and 747-8I), so mixed fleets (Qatar, Emirates,
+ *  Korean's 747-8) stay out. */
+export const FREIGHTER_FLEETS: Record<string, { op: string; types: string[] }> = {
+  KAL: { op: 'Korean Air Cargo', types: ['B77L'] }, EVA: { op: 'EVA Air Cargo', types: ['B77L'] }, THY: { op: 'Turkish Cargo', types: ['B77L'] },
+  CSN: { op: 'China Southern Cargo', types: ['B77L'] }, SIA: { op: 'Singapore Airlines Cargo', types: ['B77L'] }, CAL: { op: 'China Airlines Cargo', types: ['B77L'] },
+  ANA: { op: 'ANA Cargo', types: ['B77L'] }, CPA: { op: 'Cathay Cargo', types: ['B748'] },
+};
+/** Types that only fly as freighters today (the last passenger MD-11 flights ended in 2014). */
+const FREIGHTER_ONLY = new Set(['MD11']);
+export function cargoOp(cs: string, type: string): string | undefined {
+  const p = cs.slice(0, 3);
+  return CARGO_AIRLINES[p] ?? (FREIGHTER_FLEETS[p]?.types.includes(type) ? FREIGHTER_FLEETS[p].op : undefined) ?? (FREIGHTER_ONLY.has(type) ? p : undefined);
+}
+/** Keep cargo aircraft; the same aircraft near two hubs counts once (at the first hub). */
 export function cargoFrom(hub: string, ac: AdsbAc[], seen: Set<string>): Plane[] {
   const out: Plane[] = [];
   for (const a of ac) {
-    const cs = (a.flight ?? '').trim(), op = CARGO_AIRLINES[cs.slice(0, 3)];
+    const cs = (a.flight ?? '').trim(), op = cargoOp(cs, a.t ?? '');
     if (!op || !/^[A-Z]{3}\d/.test(cs) || !Number.isFinite(a.lat) || !Number.isFinite(a.lon) || seen.has(a.hex)) continue;
     seen.add(a.hex);
     out.push({ hex: a.hex, cs, op, type: a.t ?? '', lat: a.lat!, lng: a.lon!, alt: typeof a.alt_baro === 'number' ? a.alt_baro : null, ground: a.alt_baro === 'ground', track: a.track ?? null, hub });

@@ -74,7 +74,7 @@ describe('earnings season', () => {
   });
 });
 
-import { cargoFrom, chokeRisk, km, portWeek, shapePorts } from './trade';
+import { cargoFrom, cargoOp, chokeRisk, km, portWeek, shapePorts } from './trade';
 describe('trade flows', () => {
   it('ports: shape and 7-day average', () => {
     const rows = Array.from({ length: 8 }, (_, i) => ({ portid: 'p1', date: `2026-10-${String(23 + i).padStart(2, '0')}`, portcalls: 100 + i, import: 10, export: 5 }));
@@ -90,6 +90,13 @@ describe('trade flows', () => {
     const p = cargoFrom('MEM', ac, seen);
     expect(p.map((x) => [x.cs, x.op, x.ground])).toEqual([['FDX1230', 'FedEx', false], ['UPS9324', 'UPS', true]]);
     expect(cargoFrom('SDF', ac, seen)).toEqual([]);
+  });
+  it('cargo: passenger airlines count only on all-freighter types', () => {
+    expect(cargoOp('KAL231', 'B77L')).toBe('Korean Air Cargo');
+    expect(cargoOp('KAL017', 'B748')).toBeUndefined();   // Korean flies 747-8 passenger jets too
+    expect(cargoOp('QTR8101', 'B77L')).toBeUndefined();  // Qatar's B77L fleet is mixed
+    expect(cargoOp('CPA084', 'B748')).toBe('Cathay Cargo');
+    expect(cargoOp('XYZ12', 'MD11')).toBe('XYZ');
   });
   it('chokepoint risk: nearby, located events and alerted hazards only', () => {
     expect(km({ lat: 0, lng: 0 }, { lat: 0, lng: 1 })).toBeCloseTo(111.2, 0);
