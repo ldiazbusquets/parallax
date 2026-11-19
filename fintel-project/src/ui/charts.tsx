@@ -86,7 +86,7 @@ export function CurveChart({ labels, series, h = 200, fmt = (n: number) => n.toF
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${h}`} width="100%" role="img" aria-label="Yield curve">
       {ticks(min, max, 4).map((n) => <g key={n}><line x1={L} x2={W - R} y1={y(n)} y2={y(n)} stroke={T.grid} strokeDasharray="4 5" /><text x={L - 6} y={y(n) + 3} textAnchor="end">{fmt(n)}</text></g>)}
-      {labels.map((l, i) => <text key={l} x={x(i)} y={h - 6} textAnchor="middle">{l}</text>)}
+      {labels.map((l, i) => l ? <text key={i} x={x(i)} y={h - 6} textAnchor="middle">{l}</text> : null)}
       {series.map((s) => {
         const pts = s.values.map((v, i) => (isNum(v) ? [x(i), y(v)] : null)).filter(Boolean) as number[][];
         return <g key={s.name}>

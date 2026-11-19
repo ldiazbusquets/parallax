@@ -54,7 +54,7 @@ export function FuturesCurves() {
           <div className="kpi"><span>12 months out · {st.far?.label}</span><b><Big>{st.far ? fmt(st.far.px, cv.dp) : '—'}</Big></b><small>{cv.unit}</small></div>
           <div className="kpi"><span>12-month spread</span><b><Big>{isNum(st.spread) ? pct(st.spread, 1) : '—'}</Big></b><small><ShapeTag s={st.shape} /></small></div>
         </div>
-        <CurveChart labels={cv.pts.map((p) => p.label)} h={230} fmt={(n) => fmt(n, cv.dp)}
+        <CurveChart labels={cv.pts.map((p, i) => (i % Math.ceil(cv.pts.length / 8) === 0 ? p.label : ''))} h={230} fmt={(n) => fmt(n, cv.dp)}
           series={[{ name: 'Week ago', color: '#6f6f6f', values: cv.pts.map((p) => p.wk), dash: '5 5' }, { name: 'Now', color: T.accent, values: cv.pts.map((p) => p.px) }]} />
         <p className="faint" style={{ fontSize: 11.5, marginTop: 6 }}><span style={{ color: T.accent }}>━</span> now &nbsp; <span style={{ color: '#8a8a8a' }}>┅</span> a week ago &nbsp;·&nbsp; {cv.pts.length} contracts</p>
       </>}
@@ -141,7 +141,7 @@ function DualChart({ p, invertB, colorB, fmtA, fmtB }: { p: { d: string; a: numb
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Two series over time">
       {ticksA.map((t) => <g key={'a' + t}><line x1={L} x2={W - R} y1={ya(t)} y2={ya(t)} stroke={T.grid} strokeDasharray="4 5" /><text x={L - 6} y={ya(t) + 3} textAnchor="end">{fmtA(t)}</text></g>)}
       {ticksB.map((t) => <text key={'b' + t} x={W - R + 6} y={yb(t) + 3} style={{ fill: colorB }}>{fmtB(t)}</text>)}
-      {yrs.map((o) => <text key={o.y} x={x(o.i)} y={H - 6} textAnchor="middle">{o.y}</text>)}
+      {yrs.map((o) => <text key={o.y} x={x(o.i)} y={H - 6} textAnchor={o.i === 0 ? 'start' : 'middle'}>{o.y}</text>)}
       <path d={path((o) => yb(o.b))} fill="none" stroke={colorB} strokeWidth="1.2" opacity="0.9" />
       <path d={path((o) => ya(o.a))} fill="none" stroke={T.accent} strokeWidth="1.5" />
     </svg>
@@ -181,7 +181,7 @@ function RatioChart({ s }: { s: { d: string; v: number }[] }) {
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Ratio over time">
       {[min, (min + max) / 2, max].map((t) => <g key={t}><line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke={T.grid} strokeDasharray="4 5" /><text x={W - R + 8} y={y(t) + 3}>{t.toFixed(t < 10 ? 2 : 0)}</text></g>)}
       <line x1={L} x2={W - R} y1={y(avg)} y2={y(avg)} stroke="#9b9b9b" strokeDasharray="7 6" />
-      {yrs.map((o) => <text key={o.y} x={x(o.i)} y={H - 6} textAnchor="middle">{o.y}</text>)}
+      {yrs.map((o) => <text key={o.y} x={x(o.i)} y={H - 6} textAnchor={o.i === 0 ? 'start' : 'middle'}>{o.y}</text>)}
       <path d={s.map((o, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(o.v).toFixed(1)).join('')} fill="none" stroke={T.accent} strokeWidth="1.4" />
       <circle cx={x(s.length - 1)} cy={y(vs[vs.length - 1])} r="3.6" fill={T.accent2} />
     </svg>
