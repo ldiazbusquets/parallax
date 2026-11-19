@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSource } from '@/data/store';
 import { useQuotes } from '@/data/yahoo';
 import { CURVES, HISTORY, INVENTORIES, INV_DEFS, changeCorr, curveStats, fiveYear, pair, pctile } from '@/data/commodities';
@@ -6,6 +6,7 @@ import { dateLabel, isNum, num, pct } from '@/lib/format';
 import { CurveChart } from '@/ui/charts';
 import { Big, Chg, Panel, Tabs } from '@/ui/kit';
 import { T } from '@/ui/theme';
+import { openWorkspace, useActiveWorkspace } from '@/ui/layout';
 
 // The Commodities tab: futures curves and their shape, EIA inventories against the 5-year range, gold against real
 // yields and the dollar, metal ratios, plus a strip for Overview. Data: src/data/commodities.ts.
@@ -20,27 +21,36 @@ const STRIP: [string, string, string][] = [['CL=F', 'WTI crude', 'cl'], ['BZ=F',
 export function CommodityStrip() {
   const q = useQuotes(STRIP.map((x) => x[0]));
   const c = useSource(CURVES);
+  const here = useActiveWorkspace() === 'commodities';
   const shape = (k: string) => { const cv = c.data?.curves.find((x) => x.key === k); return cv ? curveStats(cv).shape : null; };
+  // On the Commodities tab a tile shows that market's futures curve; elsewhere it opens the tab on that curve.
+  const pick = (k: string) => {
+    pendingCurve = k; dispatchEvent(new CustomEvent('fintel:curve', { detail: k }));
+    if (!here) { openWorkspace('commodities'); return; }
+    document.getElementById('p-curves')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   return (
     <Panel id="p-cstrip" title="Commodities" src={q} span="c12" hasData={!!q.data}
-      right={<a className="btn" href="#/w/commodities">Open the Commodities tab</a>}
+      right={here ? undefined : <button className="btn" onClick={() => openWorkspace('commodities')}>Open the Commodities tab</button>}
       note="Front-month futures (Yahoo Finance). The tag is the shape of each futures curve, from the Commodities tab: contango when later months cost more, backwardation when the front month does.">
       <div className="cstrip">
         {STRIP.map(([sym, label, k]) => { const x = q.data?.[sym], s = shape(k); return (
-          <a key={sym} className="ctile" href="#/w/commodities">
+          <button key={sym} className="ctile" onClick={() => pick(k)} title={here ? `Show the ${label} futures curve` : `Open the Commodities tab on ${label}`}>
             <span className="lbl">{label}</span>
             <b><Big>{isNum(x?.price) ? fmt(x!.price, k === 'ng' || k === 'hg' ? 3 : 2) : '—'}</Big></b>
             <span className="row"><Chg v={x?.changePct} />{s && <ShapeTag s={s} />}</span>
-          </a>); })}
+          </button>); })}
       </div>
     </Panel>
   );
 }
 
 // ---------------------------------------------------------------- futures curves
+let pendingCurve = 'cl';
 export function FuturesCurves() {
   const c = useSource(CURVES);
-  const [k, setK] = useState('cl');
+  const [k, setK] = useState(pendingCurve);
+  useEffect(() => { const f = (e: Event) => setK((e as CustomEvent<string>).detail); addEventListener('fintel:curve', f); return () => removeEventListener('fintel:curve', f); }, []);
   const cv = c.data?.curves.find((x) => x.key === k) ?? c.data?.curves[0];
   const st = cv ? curveStats(cv) : null;
   const opts = (c.data?.curves ?? []).map((x) => [x.key, x.label.replace(' (RBOB)', '')] as [string, string]);

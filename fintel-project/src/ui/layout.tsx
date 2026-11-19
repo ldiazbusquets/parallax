@@ -22,6 +22,15 @@ export const WORKSPACES: Workspace[] = [
 const KEY = 'fintel.workspaces'; // { active, custom: { [workspaceId]: Item[] } }
 const OLD_KEY = 'fintel.layout';  // single custom layout from before workspaces
 
+let activeWs = 'overview';
+/** Switch to a workspace tab from anywhere (works even when the URL hash already names it). */
+export const openWorkspace = (id: string) => dispatchEvent(new CustomEvent('fintel:open-ws', { detail: id }));
+/** The workspace tab on screen. */
+export function useActiveWorkspace() {
+  const [id, setId] = useState(activeWs);
+  useEffect(() => { setId(activeWs); const f = (e: Event) => setId((e as CustomEvent<string>).detail); addEventListener('fintel:ws', f); return () => removeEventListener('fintel:ws', f); }, []);
+  return id;
+}
 const fromHash = () => { const m = location.hash.match(/^#\/w\/([a-z]+)/); return m && WORKSPACES.some((w) => w.id === m[1]) ? m[1] : null; };
 
 export function useWorkspaces(known: string[]) {
@@ -40,6 +49,8 @@ export function useWorkspaces(known: string[]) {
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ } }, [state]);
   useEffect(() => { const f = () => { const h = fromHash(); if (h) setState((s) => ({ ...s, active: h })); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   const ws = WORKSPACES.find((w) => w.id === state.active) ?? WORKSPACES[0];
+  useEffect(() => { activeWs = ws.id; dispatchEvent(new CustomEvent('fintel:ws', { detail: ws.id })); }, [ws.id]);
+  useEffect(() => { const f = (e: Event) => { const id = (e as CustomEvent<string>).detail; if (WORKSPACES.some((w) => w.id === id)) { go(id); scrollTo({ top: 0, behavior: 'smooth' }); } }; addEventListener('fintel:open-ws', f); return () => removeEventListener('fintel:open-ws', f); }); // eslint-disable-line react-hooks/exhaustive-deps
   const items = (state.custom[ws.id] ?? ws.items).filter((i) => known.includes(i.key));
   const edit = (f: (items: Item[]) => Item[]) => setState((s) => ({ ...s, custom: { ...s.custom, [ws.id]: f(items.map((i) => ({ ...i }))) } }));
   const go = (id: string) => {
