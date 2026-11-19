@@ -1,8 +1,29 @@
-CLZ27.NYM 72.47 2026-11-19T15:16:13.000Z 24 [ 72.32, 71.48, 72.47 ]
-CLF27.NYM 83.62 2026-11-19T15:16:32.000Z 24 [ 84.65, 82.31, 83.62 ]
-CLZ26.NYM 84.59 2026-11-19T15:16:32.000Z 24 [ 86.01, 83.26, 84.59 ]
-GCZ26.CMX 3701.9 2026-11-19T15:16:31.000Z 24 [ 3864.2, 3741.9, 3701.9 ]
-GCG27.CMX 3731.8 2026-11-19T15:16:31.000Z 24 [ 3896, 3772, 3731.8 ]
-NGF27.NYM 3.738 2026-11-19T15:16:33.000Z 24 [ 3.604, 3.765, 3.738 ]
-petroleum/stoc/wstk 200 * 359 {"period":"2026-11-13","duoarea":"NUS","area-name":"U.S.","product":"EPC0","product-name":"Crude Oil","process":"SAX","process-name":"Ending Stocks Excluding SPR","series":"WCESTUS1","series-description":"U.S. Ending Stocks excluding SPR of Crude Oil (Thousand Barrels)","value":"417797","units":"MBBL"} 
-natural-gas/stor/wkly 200 * 358 {"period":"2026-11-06","duoarea":"R48","area-name":"NA","product":"EPG0","product-name":"Natural Gas","process":"SWO","process-name":"Underground Storage - Working Gas","series":"NW2_EPG0_SWO_R48_BCF","series-description":"Weekly Lower 48 States Natural Gas Working Underground Storage (Billion Cubic Feet)","value":"3862","units":"BCF"} 
+
+## https://api.adsb.lol/v2/type/B77L 200 101 keys: hex,type,flight,r,t,alt_baro,alt_geom,gs,track,baro_rate,squawk,emergency,category,nav_qnh,nav_altitude_mcp,nav_heading,lat,lon,nic,rc,seen_pos,version,nic_baro,nac_p,nac_v,sil,sil_type,gva,sda,alert,spi,mlat,tisb,messages,seen,rssi
+FDX:19 BOX:10 QTR:8 UAE:8 (none):7 EVA:6 KAL:5 CKK:4 DHK:4 GEC:4 GTI:3 THY:3 CSG:2 PAC:2 CAO:2 CKS:2 SIA:2 CAL:2 CSN:1 SRR:1 ETD:1 HLF:1 AZG:1 ACA:1 TUA:1 ANA:1
+{"f":"KAL231  ","r":"HL8285","t":"B77L"}
+{"f":"CKK224  ","r":"B-221W","t":"B77L"}
+{"f":"EVA646  ","r":"B-16787","t":"B77L"}
+{"f":"CSG2521 ","r":"B-226C","t":"B77L"}
+https://opendata.adsb.fi/api/v2/type/B77L SyntaxError: Unexpected end of JSON input
+
+## https://api.adsb.lol/v2/type/MD11 200 9 keys: hex,type,flight,r,t,alt_baro,alt_geom,gs,track,baro_rate,squawk,emergency,category,nav_qnh,nav_altitude_mcp,nav_heading,lat,lon,nic,rc,seen_pos,version,nic_baro,nac_p,nac_v,sil,sil_type,gva,sda,alert,spi,mlat,tisb,messages,seen,rssi
+FDX:9
+{"f":"FDX109  ","r":"N574FE","t":"MD11"}
+{"f":"FDX1423 ","r":"N605FE","t":"MD11"}
+{"f":"FDX428  ","r":"N610FE","t":"MD11"}
+{"f":"FDX876  ","r":"N624FE","t":"MD11"}
+
+## https://api.adsb.lol/v2/type/B748 200 32 keys: hex,type,flight,r,t,alt_baro,gs,true_heading,squawk,emergency,category,lat,lon,nic,rc,seen_pos,version,nac_p,nac_v,sil,sil_type,sda,mlat,tisb,messages,seen,rssi
+UPS:9 KAL:5 CLX:5 CPA:4 GTI:2 AZG:2 NCA:2 ICV:1 DLH:1 TRK:1
+{"f":"UPS62   ","r":"N631UP","t":"B748"}
+{"f":"UPS64   ","r":"N615UP","t":"B748"}
+{"f":"UPS108  ","r":"N607UP","t":"B748"}
+{"f":"UPS96   ","r":"N618UP","t":"B748"}
+
+## https://api.adsb.lol/v2/type/B744 200 48 keys: hex,type,flight,r,t,dbFlags,alt_baro,alt_geom,gs,track,baro_rate,squawk,emergency,category,nav_qnh,nav_altitude_mcp,nav_heading,lat,lon,nic,rc,seen_pos,version,nic_baro,nac_p,nac_v,sil,sil_type,gva,sda,alert,spi,mlat,tisb,messages,seen,rssi
+GTI:9 CKS:6 UPS:4 CAL:4 DLH:3 CLX:3 TAY:3 KYE:2 ABD:2 QFA:1 SIA:1 YZR:1 ADZ:1 AAE:1 CMB:1 RCR:1 KAL:1 AIH:1 ICV:1 (none):1 WGN:1
+{"f":"KYE9719 ","r":"N903AR","t":"B744","dbFlags":8}
+{"f":"GTI856  ","r":"N496MC","t":"B744"}
+{"f":"QFA7521 ","r":"N418MC","t":"B744"}
+{"f":"CKS996  ","r":"N745CK","t":"B744"}
