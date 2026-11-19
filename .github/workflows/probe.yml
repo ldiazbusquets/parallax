@@ -4,11 +4,11 @@ permissions: { contents: write }
 jobs:
   p:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.48.2-jammy
     steps:
       - uses: actions/checkout@v4
-      - run: npm i --no-save playwright@1.48.2 >/dev/null 2>&1 && node probe.cjs
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node probe.mjs > out.txt 2>&1; cat out.txt
       - run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name probe && git config user.email probe@users.noreply.github.com
-          git add shots && git commit -qm "shots" && git push -q
+          git add out.txt && git commit -qm "out" && git push -q
