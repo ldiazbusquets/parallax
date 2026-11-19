@@ -1,83 +1,20 @@
--rw-r--r-- 1 runner runner 8910483 Nov 19 15:39 /tmp/a.csv.gz
-
-$ zcat /tmp/a.csv.gz | head -3
-000001;;;10;;;Miscode - VARIOUS;
-000011;;;10;;;Miscode - VARIOUS;
-000012;;;10;;;Miscode - VARIOUS;
-
-
-$ zcat /tmp/a.csv.gz | wc -l
-647571
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B77L"{print $5}' | sort | uniq -c | sort -rn | head -25
-    402 BOEING 777-200LR
-     19 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B748"{print $5}' | sort | uniq -c | sort -rn | head -25
-    161 BOEING 747-8
-      6 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B744"{print $5}' | sort | uniq -c | sort -rn | head -25
-    394 BOEING 747-400
-     55 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B763"{print $5}' | sort | uniq -c | sort -rn | head -25
-    854 BOEING 767-300
-    100 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="A332"{print $5}' | sort | uniq -c | sort -rn | head -25
-    722 AIRBUS A-330-200
-     76 
-      7 Airbus Voyager KC3 (A330-243MRTT)
-      5 Airbus KC-30A (A330-200MRTT)
-      5 Airbus A330-243MRTT
-      3 Airbus Voyager KC2 (A330-243MRTT)
-      2 Airbus KC-30A (A330-203MRTT)
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B738"{print $5}' | sort | uniq -c | sort -rn | head -25
-   5453 BOEING 737-800
-    299 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B752"{print $5}' | sort | uniq -c | sort -rn | head -25
-    734 BOEING 757-200
-     81 
-      8 Boeing C-32A
-      3 Boeing C-32B
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="MD11"{print $5}' | sort | uniq -c | sort -rn | head -25
-    132 MCDONNELL-DOUGLAS MD-11
-     18 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="A306"{print $5}' | sort | uniq -c | sort -rn | head -25
-    175 AIRBUS A-300-600
-      5 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B77W"{print $5}' | sort | uniq -c | sort -rn | head -25
-    861 BOEING 777-300ER
-     16 
-
-
-$ zcat /tmp/a.csv.gz | awk -F';' '$3=="B762"{print $5}' | sort | uniq -c | sort -rn | head -25
-    160 BOEING 767-200
-     70 Boeing KC-46A Pegasus
-     33 
-      4 Boeing KC-767A
-
-
-$ zcat /tmp/a.csv.gz | grep -E ';(HL8285|B-16787|A6-EFD|A7-BFA|N418MC|B-LJA);'
-06A07F;A7-BFA;B77L;00;BOEING 777-200LR;;;
-71C285;HL8285;B77L;00;BOEING 777-200LR;;;
-780231;B-LJA;B748;00;BOEING 747-8;;;
-89912D;B-16787;B77L;00;BOEING 777-200LR;;;
-A4F2EE;N418MC;B744;00;BOEING 747-400;2002;ATLAS AIR INC;
-
+200 329ms https://ldiazbusquets.github.io/ acao=* lm=Thu, 19 Nov 2026 03:47:33 GMT Luis Diaz Busquets | Finance and Wealth Management
+200 91ms https://ldiazbusquets.github.io/finance/ acao=* lm=Thu, 19 Nov 2026 09:18:10 GMT Finance | Luis Diaz Busquets
+200 118ms https://ldiazbusquets.github.io/lab/ acao=* lm=Wed, 18 Nov 2026 15:42:48 GMT Lab | Luis Diaz Busquets
+200 130ms https://ldiazbusquets.github.io/health/ acao=* lm=Tue, 17 Nov 2026 19:49:47 GMT Health | Luis Diaz Busquets
+200 187ms https://ldiazbusquets.github.io/parallax/ acao=* lm=Thu, 19 Nov 2026 15:47:53 GMT Parallax
+200 163ms https://ldiazbusquets.github.io/terminal/ acao=* lm=Tue, 17 Nov 2026 19:53:34 GMT AI Terminal | LDB Lab
+200 137ms https://ldiazbusquets.github.io/linux/ acao=* lm=Wed, 04 Nov 2026 01:52:05 GMT arch
+200 86ms https://ldiazbusquets.github.io/os/ acao=* lm=Wed, 04 Nov 2026 01:49:04 GMT OS
+200 124ms https://ldiazbusquets.github.io/archway-macro/ acao=* lm=Thu, 19 Nov 2026 15:42:48 GMT Archway Macro Monitor · LDB Lab
+200 97ms https://ldiazbusquets.github.io/bankscope-ai/ acao=* lm=Mon, 16 Nov 2026 20:29:37 GMT BankScope AI · Bank risk research
+200 88ms https://ldiazbusquets.github.io/retirement-sim/ acao=* lm=Tue, 10 Nov 2026 20:00:22 GMT Retirement Simulator · Monte Carlo savings planner
+404 75ms https://ldiazbusquets.github.io/ai/ acao=* lm=null Page not found &middot; GitHub Pages
+200 90ms https://ldiazbusquets.github.io/remote/ acao=* lm=Fri, 30 Oct 2026 10:56:23 GMT LDB Remote | remote
+200 71ms https://ldiazbusquets.github.io/admin/ acao=* lm=Thu, 19 Nov 2026 15:45:38 GMT admin
+200 127ms https://ldiazbusquets.github.io/budget/ acao=* lm=Fri, 06 Nov 2026 17:52:58 GMT LDB Budget
+200 282ms https://ldiazbusquets.github.io/dashboard/ acao=* lm=Thu, 19 Nov 2026 09:26:51 GMT Dashboard
+200 96ms https://ldiazbusquets.github.io/status/ acao=* lm=Thu, 19 Nov 2026 15:42:20 GMT status
+parallax 200 * probe 2026-11-19T15:50:41Z
+finance 200 * Site check 2026-11-19T09:23:55Z
+lab 200 * pages build and deployment 2026-11-18T15:42:52Z
